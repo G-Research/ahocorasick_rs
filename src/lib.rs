@@ -1,5 +1,5 @@
 use aho_corasick::AhoCorasick;
-use pyo3::prelude::*;
+use pyo3::{prelude::*, types::PyUnicode};
 
 /// A Python wrapper for AhoCorasick.
 #[pyclass(name = "AhoCorasick")]
@@ -28,10 +28,16 @@ impl PyAhoCorasick {
     }
 
     /// Return matches as tuple of (pattern, start_index_in_haystack).
-    fn find_matches_as_strings(&self, haystack: String) -> Vec<(String, usize)> {
-        self.ac_impl
+    fn find_matches_as_strings(self_: PyRef<Self>, haystack: &str) -> Vec<(Py<PyAny>, usize)> {
+        self_
+            .ac_impl
             .find_iter(&haystack)
-            .map(|m| (haystack[m.start()..m.end()].to_string(), m.start()))
+            .map(|m| {
+                (
+                    haystack[m.start()..m.end()].to_object(self_.py()),
+                    m.start(),
+                )
+            })
             .collect()
     }
 }
