@@ -17,5 +17,7 @@ For each feature, include tests and documentation in README.
 * [ ] Match kind
 * [ ] DFA
 * [ ] ascii case insensitive
+* [ ] Maturin builds in GitHub Actions
+* [ ] PyPI release
 
 Other features in API: open issues, they seem less useful.
