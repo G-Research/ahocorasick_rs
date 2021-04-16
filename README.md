@@ -17,6 +17,7 @@ For each feature, include tests and documentation in README.
 * [ ] Match kind
 * [ ] DFA
 * [ ] ascii case insensitive
+* [ ] Finish documentation
 * [ ] Maturin builds in GitHub Actions
 * [ ] PyPI release
 
