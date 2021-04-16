@@ -1,0 +1,17 @@
+[package]
+name = "ahocorasick_rs"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+name = "ahocorasick_rs"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+version = "0.13.2"
+
+[features]
+# The extension-module song and dance is explained here:
+# https://pyo3.rs/v0.13.2/faq.html
+extension-module = ["pyo3/extension-module", "pyo3/abi3"]
+default = ["extension-module"]
