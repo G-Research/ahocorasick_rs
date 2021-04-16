@@ -8,6 +8,9 @@ authors = ["G-Research", "Itamar Turner-Trauring <itamar@pythonspeed.com>"]
 name = "ahocorasick_rs"
 crate-type = ["cdylib"]
 
+[dependencies]
+aho-corasick = "0.7.15"
+
 [dependencies.pyo3]
 version = "0.13.2"
 
