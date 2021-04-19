@@ -44,6 +44,49 @@ For example:
 
 ## Additional configuration
 
+### Match kind
+
+There three ways you can configure matching in cases where multiple patterns overlap.
+Assuming we have this starting point:
+
+```python
+>>> from ahocorasick_rs import *
+>>> patterns = ["disco", "disc", "discontent"]
+>>> haystack = "discontent"
+```
+
+#### `MATCHKIND_STANDARD` (the default)
+
+This returns the first one that matches.
+
+```python
+>>> AhoCorasick(patterns).find_matches_as_strings(haystack)
+[('disc', 0)]
+>>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_STANDARD)
+>>> ac.find_matches_as_strings(haystack)
+[('disc', 0)]
+```
+
+#### `MATCHKIND_LEFTMOST_FIRST`
+
+This returns the leftmost matching pattern that appears first in the list of patterns.
+
+```python
+>>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_FIRST)
+>>> ac.find_matches_as_strings(haystack)
+[('disco', 0)]
+```
+
+##### `MATCHKIND_LEFTMOST_LONGEST`
+
+This returns the leftmost matching pattern that is longest:
+
+```python
+>>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_LONGEST)
+>>> ac.find_matches_as_strings(haystack)
+[('discontent', 0)]
+```
+
 ## TODO Benchmarks
 
 ## Features to implement
@@ -51,7 +94,8 @@ For example:
 For each feature, include tests and documentation in README.
 
 * [x] Basic API
-* [ ] Match kind
+* [x] Match kind
+* [ ] Overlapping
 * [ ] DFA
 * [ ] ascii case insensitive
 * [ ] Finish documentation (README)

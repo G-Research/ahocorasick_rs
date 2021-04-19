@@ -1,5 +1,5 @@
-use aho_corasick::AhoCorasick;
-use pyo3::prelude::*;
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
+use pyo3::{exceptions::PyValueError, prelude::*};
 
 /// A Python wrapper for AhoCorasick.
 #[pyclass(name = "AhoCorasick")]
@@ -12,10 +12,23 @@ struct PyAhoCorasick {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    fn new(patterns: Vec<&str>) -> Self {
-        Self {
-            ac_impl: AhoCorasick::new(patterns),
-        }
+    #[args(matchkind = "\"MATCHKIND_STANDARD\"")]
+    fn new(patterns: Vec<&str>, matchkind: &str) -> PyResult<Self> {
+        let matchkind = match matchkind {
+            "MATCHKIND_STANDARD" => MatchKind::Standard,
+            "MATCHKIND_LEFTMOST_FIRST" => MatchKind::LeftmostFirst,
+            "MATCHKIND_LEFTMOST_LONGEST" => MatchKind::LeftmostLongest,
+            _ => {
+                return Err(PyValueError::new_err(
+                    "matchkind must be one of the ahocorasick_rs.MATCHKIND_* constants.",
+                ));
+            }
+        };
+        Ok(Self {
+            ac_impl: AhoCorasickBuilder::new()
+                .match_kind(matchkind)
+                .build(patterns),
+        })
     }
 
     /// Return matches as tuple of (index_into_patterns,
@@ -44,7 +57,11 @@ impl PyAhoCorasick {
 
 /// The main Python module.
 #[pymodule]
-fn ahocorasick_rs(py: Python, m: &PyModule) -> PyResult<()> {
+fn ahocorasick_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyAhoCorasick>()?;
+    // PyO3 doesn't support auto-wrapping Enums, so we just do it manually.
+    m.add("MATCHKIND_STANDARD", "MATCHKIND_STANDARD")?;
+    m.add("MATCHKIND_LEFTMOST_FIRST", "MATCHKIND_LEFTMOST_FIRST")?;
+    m.add("MATCHKIND_LEFTMOST_LONGEST", "MATCHKIND_LEFTMOST_LONGEST")?;
     Ok(())
 }
