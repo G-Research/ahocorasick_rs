@@ -1,5 +1,5 @@
 use aho_corasick::AhoCorasick;
-use pyo3::{prelude::*, types::PyUnicode};
+use pyo3::prelude::*;
 
 /// A Python wrapper for AhoCorasick.
 #[pyclass(name = "AhoCorasick")]
