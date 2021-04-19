@@ -13,3 +13,11 @@ venv:
 # Compile extension and install into the venv.
 build-dev:
 	. venv/bin/activate && pip install .
+
+install-dev-dependencies:
+	. venv/bin/activate && pip install -r requirements-dev.txt
+
+test:
+	flake8 tests/
+	black --check tests/
+	. venv/bin/activate && pytest tests/
