@@ -82,3 +82,50 @@ def test_matchkind():
         "winter",
         "discontent",
     ]
+
+
+def test_overlapping():
+    """
+    It's possible to get overlapping matches, but only with MATCHKIND_STANDARD.
+    """
+    haystack = "This is the winter of my discontent"
+    patterns = ["content", "disco", "disc", "discontent", "winter"]
+
+    def get_strings(ac):
+        assert ac.find_matches_as_strings(haystack) == ac.find_matches_as_strings(
+            haystack, overlapping=False
+        )
+        assert ac.find_matches_as_indexes(haystack) == ac.find_matches_as_indexes(
+            haystack, overlapping=False
+        )
+        result = ac.find_matches_as_strings(haystack, overlapping=True)
+        for string, start in result:
+            assert haystack[start : start + len(string)] == string
+        result = [string for (string, _) in result]
+        result_indexes = ac.find_matches_as_indexes(haystack, overlapping=True)
+        assert [patterns[i] for (i, _, _) in result_indexes] == result
+        assert [haystack[s:e] for (_, s, e) in result_indexes] == result
+        return result
+
+    def assert_no_overlapping(ac):
+        with pytest.raises(ValueError):
+            ac.find_matches_as_strings(haystack, overlapping=True)
+        with pytest.raises(ValueError):
+            ac.find_matches_as_indexes(haystack, overlapping=True)
+
+    # Default is MATCHKIND_STANDARD:
+    expected = [
+        "winter",
+        "disc",
+        "disco",
+        "discontent",
+        "content",
+    ]
+    assert get_strings(AhoCorasick(patterns)) == expected
+
+    # Explicit MATCHKIND_STANDARD:
+    assert get_strings(AhoCorasick(patterns, matchkind=MATCHKIND_STANDARD)) == expected
+
+    # Other matchkinds don't support overlapping.
+    assert_no_overlapping(AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_FIRST))
+    assert_no_overlapping(AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_LONGEST))

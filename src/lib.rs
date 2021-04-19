@@ -1,10 +1,27 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchKind};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 /// A Python wrapper for AhoCorasick.
 #[pyclass(name = "AhoCorasick")]
 struct PyAhoCorasick {
     ac_impl: AhoCorasick,
+}
+
+impl<'a> PyAhoCorasick {
+    fn get_iter(
+        &'a self,
+        haystack: &'a str,
+        overlapping: bool,
+    ) -> PyResult<Box<dyn Iterator<Item = Match> + 'a>> {
+        if overlapping && !self.ac_impl.supports_overlapping() {
+            return Err(PyValueError::new_err("This automaton doesn't support overlapping results; perhaps you didn't use the defalt matchkind (MATCHKIND_STANDARD)?"));
+        }
+        Ok(if overlapping {
+            Box::new(self.ac_impl.find_overlapping_iter(haystack))
+        } else {
+            Box::new(self.ac_impl.find_iter(haystack))
+        })
+    }
 }
 
 /// Methods for PyAhoCorasick.
@@ -33,25 +50,34 @@ impl PyAhoCorasick {
 
     /// Return matches as tuple of (index_into_patterns,
     /// start_index_in_haystack, end_index_in_haystack).
-    fn find_matches_as_indexes(&self, haystack: &str) -> Vec<(usize, usize, usize)> {
-        self.ac_impl
-            .find_iter(haystack)
+    #[args(overlapping = "false")]
+    fn find_matches_as_indexes(
+        &self,
+        haystack: String,
+        overlapping: bool,
+    ) -> PyResult<Vec<(usize, usize, usize)>> {
+        Ok(self
+            .get_iter(&haystack, overlapping)?
             .map(|m| (m.pattern(), m.start(), m.end()))
-            .collect()
+            .collect())
     }
 
     /// Return matches as tuple of (pattern, start_index_in_haystack).
-    fn find_matches_as_strings(self_: PyRef<Self>, haystack: &str) -> Vec<(Py<PyAny>, usize)> {
-        self_
-            .ac_impl
-            .find_iter(&haystack)
+    #[args(overlapping = "false")]
+    fn find_matches_as_strings(
+        self_: PyRef<Self>,
+        haystack: String,
+        overlapping: bool,
+    ) -> PyResult<Vec<(Py<PyAny>, usize)>> {
+        Ok(self_
+            .get_iter(&haystack, overlapping)?
             .map(|m| {
                 (
                     haystack[m.start()..m.end()].to_object(self_.py()),
                     m.start(),
                 )
             })
-            .collect()
+            .collect())
     }
 }
 

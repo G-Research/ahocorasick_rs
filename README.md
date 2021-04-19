@@ -87,6 +87,18 @@ This returns the leftmost matching pattern that is longest:
 [('discontent', 0)]
 ```
 
+### Overlapping matches
+
+You can get all overlapping matches, instead of just one of them, but only if you stick to the default matchkind, MATCHKIND_STANDARD:
+
+```python
+>>> from ahocorasick_rs import AhoCorasick
+>>> patterns = ["winter", "onte", "disco", "discontent"]
+>>> ac = AhoCorasick(patterns)
+>>> ac.find_matches_as_strings("discontent", overlapping=True)
+[('disco', 0), ('onte', 4), ('discontent', 0)]
+```
+
 ## TODO Benchmarks
 
 ## Features to implement
@@ -95,7 +107,7 @@ For each feature, include tests and documentation in README.
 
 * [x] Basic API
 * [x] Match kind
-* [ ] Overlapping
+* [x] Overlapping
 * [ ] DFA
 * [ ] ascii case insensitive
 * [ ] Finish documentation (README)
