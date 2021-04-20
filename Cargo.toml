@@ -19,3 +19,6 @@ version = "0.13.2"
 # https://pyo3.rs/v0.13.2/faq.html
 extension-module = ["pyo3/extension-module", "pyo3/abi3-py36"]
 default = ["extension-module"]
+
+[profile.release]
+lto = true
