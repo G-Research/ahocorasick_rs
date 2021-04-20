@@ -9,19 +9,11 @@ struct PyAhoCorasick {
 }
 
 impl<'a> PyAhoCorasick {
-    fn get_iter(
-        &'a self,
-        haystack: &'a str,
-        overlapping: bool,
-    ) -> PyResult<Box<dyn Iterator<Item = Match> + 'a>> {
+    fn check_overlapping(&self, overlapping: bool) -> PyResult<()> {
         if overlapping && !self.ac_impl.supports_overlapping() {
             return Err(PyValueError::new_err("This automaton doesn't support overlapping results; perhaps you didn't use the defalt matchkind (MATCHKIND_STANDARD)?"));
         }
-        Ok(if overlapping {
-            Box::new(self.ac_impl.find_overlapping_iter(haystack))
-        } else {
-            Box::new(self.ac_impl.find_iter(haystack))
-        })
+        Ok(())
     }
 }
 
@@ -63,10 +55,20 @@ impl PyAhoCorasick {
         haystack: String,
         overlapping: bool,
     ) -> PyResult<Vec<(usize, usize, usize)>> {
-        Ok(self
-            .get_iter(&haystack, overlapping)?
-            .map(|m| (m.pattern(), m.start(), m.end()))
-            .collect())
+        self.check_overlapping(overlapping)?;
+        if overlapping {
+            Ok(self
+                .ac_impl
+                .find_overlapping_iter(&haystack)
+                .map(|m| (m.pattern(), m.start(), m.end()))
+                .collect())
+        } else {
+            Ok(self
+                .ac_impl
+                .find_iter(&haystack)
+                .map(|m| (m.pattern(), m.start(), m.end()))
+                .collect())
+        }
     }
 
     /// Return matches as tuple of (pattern, start_index_in_haystack).
@@ -76,10 +78,20 @@ impl PyAhoCorasick {
         haystack: String,
         overlapping: bool,
     ) -> PyResult<Vec<(Py<PyUnicode>, usize)>> {
-        Ok(self_
-            .get_iter(&haystack, overlapping)?
-            .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
-            .collect())
+        self_.check_overlapping(overlapping)?;
+        if overlapping {
+            Ok(self_
+                .ac_impl
+                .find_overlapping_iter(&haystack)
+                .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
+                .collect())
+        } else {
+            Ok(self_
+                .ac_impl
+                .find_iter(&haystack)
+                .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
+                .collect())
+        }
     }
 }
 
