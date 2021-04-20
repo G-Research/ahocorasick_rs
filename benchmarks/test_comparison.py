@@ -59,6 +59,16 @@ def test_ahocorasick_rs_standard(benchmark):
     print(benchmark(run))
 
 
+def test_ahocorasick_rs_standard_indexes(benchmark):
+    """ahocorasick_rs standard matching algorithm, returning indexes."""
+    ac = ahocorasick_rs.AhoCorasick(PATTERNS)
+
+    def run():
+        return ac.find_matches_as_indexes(HAYSTACK)
+
+    print(benchmark(run))
+
+
 def test_ahocorasick_rs_overlapping(benchmark):
     """ahocorasick_rs overlapping matches."""
     ac = ahocorasick_rs.AhoCorasick(PATTERNS)
