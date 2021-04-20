@@ -21,3 +21,10 @@ test:
 	flake8 tests/
 	black --check tests/
 	. venv/bin/activate && pytest tests/
+
+prep-benchmark:
+	# Disable turbo-boost for more consistent results.
+	echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+
+benchmark:
+	. venv/bin/activate && pytest --benchmark-warmup=on benchmarks/

@@ -109,7 +109,9 @@ For each feature, include tests and documentation in README.
 * [x] Match kind
 * [x] Overlapping
 * [ ] DFA
-* [ ] ascii case insensitive
+* [ ] Release GIL
+* [ ] Benchmarks
+* [ ] ascii case insensitive? or don't bother?
 * [ ] Finish documentation (README)
 * [ ] Maturin builds in GitHub Actions
 * [ ] PyPI release

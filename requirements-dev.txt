@@ -1,2 +1,5 @@
 pytest
+pytest-benchmark
+flake8
 black
+pyahocorasick
