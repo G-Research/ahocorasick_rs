@@ -71,7 +71,7 @@ impl PyAhoCorasick {
         }
     }
 
-    /// Return matches as tuple of (pattern, start_index_in_haystack).
+    /// Return matches as list of patterns.
     #[args(overlapping = "false")]
     fn find_matches_as_strings(
         self_: PyRef<Self>,
