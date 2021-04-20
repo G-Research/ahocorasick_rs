@@ -78,18 +78,19 @@ impl PyAhoCorasick {
         haystack: &str,
         overlapping: bool,
     ) -> PyResult<Vec<(Py<PyUnicode>, usize)>> {
+        let py = self_.py();
         self_.check_overlapping(overlapping)?;
         if overlapping {
             Ok(self_
                 .ac_impl
                 .find_overlapping_iter(haystack)
-                .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
+                .map(|m| (self_.patterns[m.pattern()].clone_ref(py), m.start()))
                 .collect())
         } else {
             Ok(self_
                 .ac_impl
                 .find_iter(haystack)
-                .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
+                .map(|m| (self_.patterns[m.pattern()].clone_ref(py), m.start()))
                 .collect())
         }
     }
