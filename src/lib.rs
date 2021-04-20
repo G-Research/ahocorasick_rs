@@ -75,20 +75,20 @@ impl PyAhoCorasick {
     #[args(overlapping = "false")]
     fn find_matches_as_strings(
         self_: PyRef<Self>,
-        haystack: String,
+        haystack: &str,
         overlapping: bool,
     ) -> PyResult<Vec<(Py<PyUnicode>, usize)>> {
         self_.check_overlapping(overlapping)?;
         if overlapping {
             Ok(self_
                 .ac_impl
-                .find_overlapping_iter(&haystack)
+                .find_overlapping_iter(haystack)
                 .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
                 .collect())
         } else {
             Ok(self_
                 .ac_impl
-                .find_iter(&haystack)
+                .find_iter(haystack)
                 .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
                 .collect())
         }
