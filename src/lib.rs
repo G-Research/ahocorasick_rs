@@ -1,10 +1,11 @@
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchKind};
-use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3::{exceptions::PyValueError, prelude::*, types::PyUnicode};
 
 /// A Python wrapper for AhoCorasick.
 #[pyclass(name = "AhoCorasick")]
 struct PyAhoCorasick {
     ac_impl: AhoCorasick,
+    patterns: Vec<Py<PyUnicode>>,
 }
 
 impl<'a> PyAhoCorasick {
@@ -30,7 +31,7 @@ impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
     #[args(matchkind = "\"MATCHKIND_STANDARD\"")]
-    fn new(patterns: Vec<&str>, matchkind: &str) -> PyResult<Self> {
+    fn new(py: Python, patterns: Vec<Py<PyUnicode>>, matchkind: &str) -> PyResult<Self> {
         let matchkind = match matchkind {
             "MATCHKIND_STANDARD" => MatchKind::Standard,
             "MATCHKIND_LEFTMOST_FIRST" => MatchKind::LeftmostFirst,
@@ -41,10 +42,16 @@ impl PyAhoCorasick {
                 ));
             }
         };
+        let mut rust_patterns: Vec<String> = vec![];
+        for s in patterns.iter() {
+            rust_patterns.push(s.as_ref(py).extract()?);
+        }
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
+                .dfa(true) // DFA results in faster matches
                 .match_kind(matchkind)
-                .build(patterns),
+                .build(rust_patterns),
+            patterns,
         })
     }
 
@@ -68,15 +75,10 @@ impl PyAhoCorasick {
         self_: PyRef<Self>,
         haystack: String,
         overlapping: bool,
-    ) -> PyResult<Vec<(Py<PyAny>, usize)>> {
+    ) -> PyResult<Vec<(Py<PyUnicode>, usize)>> {
         Ok(self_
             .get_iter(&haystack, overlapping)?
-            .map(|m| {
-                (
-                    haystack[m.start()..m.end()].to_object(self_.py()),
-                    m.start(),
-                )
-            })
+            .map(|m| (self_.patterns[m.pattern()].clone(), m.start()))
             .collect())
     }
 }
