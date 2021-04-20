@@ -37,7 +37,7 @@ def test_pyahocorasick_overlapping(benchmark):
         for i in range(1000):
             return list(automaton.iter(HAYSTACK))
 
-    benchmark(run)
+    print(benchmark(run))
 
 
 def test_pyahocorasick_longest_match(benchmark):
@@ -48,7 +48,18 @@ def test_pyahocorasick_longest_match(benchmark):
         for i in range(1000):
             return list(automaton.iter_long(HAYSTACK))
 
-    benchmark(run)
+    print(benchmark(run))
+
+
+def test_ahocorasick_rs_standard(benchmark):
+    """ahocorasick_rs overlapping matches."""
+    ac = ahocorasick_rs.AhoCorasick(PATTERNS)
+
+    def run():
+        for i in range(1000):
+            return ac.find_matches_as_strings(HAYSTACK)
+
+    print(benchmark(run))
 
 
 def test_ahocorasick_rs_overlapping(benchmark):
@@ -59,7 +70,7 @@ def test_ahocorasick_rs_overlapping(benchmark):
         for i in range(1000):
             return ac.find_matches_as_strings(HAYSTACK, overlapping=True)
 
-    benchmark(run)
+    print(benchmark(run))
 
 
 def test_ahocorasick_rs_longest_match(benchmark):
@@ -72,4 +83,4 @@ def test_ahocorasick_rs_longest_match(benchmark):
         for i in range(1000):
             return ac.find_matches_as_strings(HAYSTACK)
 
-    benchmark(run)
+    print(benchmark(run))
