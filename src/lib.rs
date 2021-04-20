@@ -77,20 +77,20 @@ impl PyAhoCorasick {
         self_: PyRef<Self>,
         haystack: &str,
         overlapping: bool,
-    ) -> PyResult<Vec<(Py<PyUnicode>, usize)>> {
+    ) -> PyResult<Vec<Py<PyUnicode>>> {
         let py = self_.py();
         self_.check_overlapping(overlapping)?;
         if overlapping {
             Ok(self_
                 .ac_impl
                 .find_overlapping_iter(haystack)
-                .map(|m| (self_.patterns[m.pattern()].clone_ref(py), m.start()))
+                .map(|m| self_.patterns[m.pattern()].clone_ref(py))
                 .collect())
         } else {
             Ok(self_
                 .ac_impl
                 .find_iter(haystack)
-                .map(|m| (self_.patterns[m.pattern()].clone_ref(py), m.start()))
+                .map(|m| self_.patterns[m.pattern()].clone_ref(py))
                 .collect())
         }
     }

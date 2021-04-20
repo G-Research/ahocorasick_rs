@@ -32,14 +32,11 @@ For example:
 ('hello', 'world', 'hello')
 ```
 
-`find_matches_as_strings()` returns a list of tuples, each tuple being:
-
-1. The pattern.
-2. Its start index inside the haystack (the end index can be derived by adding the length of the pattern).
+`find_matches_as_strings()` returns a list of found patterns:
 
 ```python
 >>> ac.find_matches_as_strings(haystack)
-[('hello', 17), ('world', 23), ('hello', 30)]
+['hello', 'world', 'hello']
 ```
 
 ## Additional configuration
@@ -61,10 +58,10 @@ This returns the first one that matches.
 
 ```python
 >>> AhoCorasick(patterns).find_matches_as_strings(haystack)
-[('disc', 0)]
+['disc']
 >>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_STANDARD)
 >>> ac.find_matches_as_strings(haystack)
-[('disc', 0)]
+['disc']
 ```
 
 #### `MATCHKIND_LEFTMOST_FIRST`
@@ -74,7 +71,7 @@ This returns the leftmost matching pattern that appears first in the list of pat
 ```python
 >>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_FIRST)
 >>> ac.find_matches_as_strings(haystack)
-[('disco', 0)]
+['disco']
 ```
 
 ##### `MATCHKIND_LEFTMOST_LONGEST`
@@ -84,7 +81,7 @@ This returns the leftmost matching pattern that is longest:
 ```python
 >>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_LONGEST)
 >>> ac.find_matches_as_strings(haystack)
-[('discontent', 0)]
+['discontent']
 ```
 
 ### Overlapping matches
@@ -96,7 +93,7 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 >>> patterns = ["winter", "onte", "disco", "discontent"]
 >>> ac = AhoCorasick(patterns)
 >>> ac.find_matches_as_strings("discontent", overlapping=True)
-[('disco', 0), ('onte', 4), ('discontent', 0)]
+['disco', 'onte', 'discontent']
 ```
 
 ## TODO Benchmarks
