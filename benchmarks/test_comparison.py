@@ -1,4 +1,10 @@
-"""Benchmarks comparing ahocorasick_rs to other libraries."""
+"""
+Benchmarks comparing ahocorasick_rs to other libraries.
+
+We don't just use the same string each time, because pyo3 wants UTF-8, and
+Python's UTF-8 conversion API caches the conversion, so repeatedly using the
+same haystack would understate ahocorasick_rs's overhead.
+"""
 
 import random
 
@@ -34,7 +40,8 @@ def test_pyahocorasick_overlapping(benchmark):
     automaton = make_pyahocorasick_automaton()
 
     def run():
-        return list(automaton.iter(HAYSTACK))
+        for i in range(10000):
+            return list(automaton.iter(HAYSTACK + str(i)))
 
     print(benchmark(run))
 
@@ -44,7 +51,8 @@ def test_pyahocorasick_longest_match(benchmark):
     automaton = make_pyahocorasick_automaton()
 
     def run():
-        return list(automaton.iter_long(HAYSTACK))
+        for i in range(10000):
+            return list(automaton.iter_long(HAYSTACK + str(i)))
 
     print(benchmark(run))
 
@@ -54,7 +62,8 @@ def test_ahocorasick_rs_standard(benchmark):
     ac = ahocorasick_rs.AhoCorasick(PATTERNS)
 
     def run():
-        return ac.find_matches_as_strings(HAYSTACK)
+        for i in range(10000):
+            return ac.find_matches_as_strings(HAYSTACK + str(i))
 
     print(benchmark(run))
 
@@ -64,7 +73,8 @@ def test_ahocorasick_rs_standard_indexes(benchmark):
     ac = ahocorasick_rs.AhoCorasick(PATTERNS)
 
     def run():
-        return ac.find_matches_as_indexes(HAYSTACK)
+        for i in range(10000):
+            return ac.find_matches_as_indexes(HAYSTACK + str(i))
 
     print(benchmark(run))
 
@@ -74,7 +84,8 @@ def test_ahocorasick_rs_overlapping(benchmark):
     ac = ahocorasick_rs.AhoCorasick(PATTERNS)
 
     def run():
-        return ac.find_matches_as_strings(HAYSTACK, overlapping=True)
+        for i in range(10000):
+            return ac.find_matches_as_strings(HAYSTACK + str(i), overlapping=True)
 
     print(benchmark(run))
 
@@ -86,16 +97,18 @@ def test_ahocorasick_rs_longest_match(benchmark):
     )
 
     def run():
-        return ac.find_matches_as_strings(HAYSTACK)
+        for i in range(10000):
+            return ac.find_matches_as_strings(HAYSTACK + str(i))
 
     print(benchmark(run))
 
 
-def test_function_call(benchmark):
+def test_overhead(benchmark):
     """Just run a function that does everything other than call API."""
     ac = ahocorasick_rs.AhoCorasick(PATTERNS)
 
     def run():
-        return ac.find_matches_as_strings
+        for i in range(10000):
+            _ = HAYSTACK + str(i)
 
     print(benchmark(run))

@@ -105,22 +105,19 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 
 ## Benchmarks
 
-This is what gets benchmarked in `benchmarks/test_comparison.py`, matching ~1000 patterns against a line of text.
-The benchmarking method seems to add some overhead, so real-world performance might actually be more tilted towards `ahocorasick_rs` in the non-overlapping case.
+This is what gets benchmarked in `benchmarks/test_comparison.py`, matching ~1000 patterns against a line of text, with the benchmarked overhead subtracted.
 
-For longest matching pattern, `ahocorasick_rs` is faster. For overlapping matches, `pyahocorasick` is faster.
+As you can see, for longest matching pattern, `ahocorasick_rs` is faster. For overlapping matches, `pyahocorasick` is faster. Lower is better:
 
-> **Important:** As with any benchmark, real-world results will differ based on your particular situation. If performance is important, measure the alternatives yourself.
+| `find_matches_as_strings` or equivalent | nanoseconds per call |
+|-----------------------------------------|---------------------:|
+| `ahocorasick_rs` standard matching      |                  576 |
+| `ahocorasick_rs` longest matching       |                  633 |
+| `pyahocorasick` longest matching        |                  791 |
+| `ahocorasick_rs` overlapping matching   |                 1362 |
+| `pyahocorasick` overlapping matching    |                 1139 |
 
-Higher is better:
-
-| `find_matches_as_strings` or equivalent | K ops/sec |
-|-----------------------------------------|-----------|
-| `ahocorasick_rs` standard matching      | 1,388     |
-| `ahocorasick_rs` longest matching       | 1,328     |
-| `pyahocorasick` longest matching        | 984       |
-| `ahocorasick_rs` overlapping matching   | 674       |
-| `pyahocorasick` overlapping matching    | 829       |
+> **Important:** As with any benchmark, real-world results will differ based on your particular situation. If performance is important to your application, measure the alternatives yourself!
 
 ## Features to implement
 
@@ -134,7 +131,8 @@ For each feature, include tests and documentation in README.
 * [x] Benchmarks
 * [ ] Batch mode for Pandas columns
 * [ ] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals, initial benchmark results
-* [ ] Maturin builds in GitHub Actions
-* [ ] PyPI release
+* [ ] GitHub Actions testing setup
+* [ ] PyPI release automation
+* [ ] Initial release
 
 Other features in API: open issues, they seem less useful.
