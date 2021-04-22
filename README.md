@@ -103,7 +103,24 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 * Matching releases the GIL, to enable concurrency.
 * Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
 
-## TODO Benchmarks
+## Benchmarks
+
+This is what gets benchmarked in `benchmarks/test_comparison.py`, matching ~1000 patterns against a line of text.
+The benchmarking method seems to add some overhead, so real-world performance might actually be more tilted towards `ahocorasick_rs` in the non-overlapping case.
+
+For longest matching pattern, `ahocorasick_rs` is faster. For overlapping matches, `pyahocorasick` is faster.
+
+> **Important:** As with any benchmark, real-world results will differ based on your particular situation. If performance is important, measure the alternatives yourself.
+
+Higher is better:
+
+| `find_matches_as_strings` or equivalent | K ops/sec |
+|-----------------------------------------|-----------|
+| `ahocorasick_rs` standard matching      | 1,388     |
+| `ahocorasick_rs` longest matching       | 1,328     |
+| `pyahocorasick` longest matching        | 984       |
+| `ahocorasick_rs` overlapping matching   | 674       |
+| `pyahocorasick` overlapping matching    | 829       |
 
 ## Features to implement
 
