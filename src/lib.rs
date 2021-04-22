@@ -39,10 +39,12 @@ impl PyAhoCorasick {
             rust_patterns.push(s.as_ref(py).extract()?);
         }
         Ok(Self {
-            ac_impl: AhoCorasickBuilder::new()
-                .dfa(true) // DFA results in faster matches
-                .match_kind(matchkind)
-                .build(rust_patterns),
+            ac_impl: py.allow_threads(|| {
+                AhoCorasickBuilder::new()
+                    .dfa(true) // DFA results in faster matches
+                    .match_kind(matchkind)
+                    .build(rust_patterns)
+            }),
             patterns,
         })
     }
@@ -51,24 +53,25 @@ impl PyAhoCorasick {
     /// start_index_in_haystack, end_index_in_haystack).
     #[args(overlapping = "false")]
     fn find_matches_as_indexes(
-        &self,
+        self_: PyRef<Self>,
         haystack: String,
         overlapping: bool,
     ) -> PyResult<Vec<(usize, usize, usize)>> {
-        self.check_overlapping(overlapping)?;
-        if overlapping {
-            Ok(self
-                .ac_impl
-                .find_overlapping_iter(&haystack)
-                .map(|m| (m.pattern(), m.start(), m.end()))
-                .collect())
-        } else {
-            Ok(self
-                .ac_impl
-                .find_iter(&haystack)
-                .map(|m| (m.pattern(), m.start(), m.end()))
-                .collect())
-        }
+        self_.check_overlapping(overlapping)?;
+        let ac_impl = &self_.ac_impl;
+        self_.py().allow_threads(|| {
+            if overlapping {
+                Ok(ac_impl
+                    .find_overlapping_iter(&haystack)
+                    .map(|m| (m.pattern(), m.start(), m.end()))
+                    .collect())
+            } else {
+                Ok(ac_impl
+                    .find_iter(&haystack)
+                    .map(|m| (m.pattern(), m.start(), m.end()))
+                    .collect())
+            }
+        })
     }
 
     /// Return matches as list of patterns.
@@ -80,16 +83,15 @@ impl PyAhoCorasick {
     ) -> PyResult<Vec<Py<PyUnicode>>> {
         let py = self_.py();
         self_.check_overlapping(overlapping)?;
+        let ac_impl = &self_.ac_impl;
         if overlapping {
-            Ok(self_
-                .ac_impl
-                .find_overlapping_iter(haystack)
+            Ok(py
+                .allow_threads(|| ac_impl.find_overlapping_iter(haystack))
                 .map(|m| self_.patterns[m.pattern()].clone_ref(py))
                 .collect())
         } else {
-            Ok(self_
-                .ac_impl
-                .find_iter(haystack)
+            Ok(py
+                .allow_threads(|| ac_impl.find_iter(haystack))
                 .map(|m| self_.patterns[m.pattern()].clone_ref(py))
                 .collect())
         }

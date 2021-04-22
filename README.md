@@ -96,6 +96,13 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 ['disco', 'onte', 'discontent']
 ```
 
+## Implementation details
+
+* The underlying library supports two implementations, one oriented towards reducing memory usage and construction time (NFA), the latter towards faster matching (DFA).
+  The Python wrapper only exposes the DFA version, since expensive setup compensated by fast batch operations is the standard Python tradeoff.
+* Matching releases the GIL, to enable concurrency.
+* Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
+
 ## TODO Benchmarks
 
 ## Features to implement
@@ -106,9 +113,10 @@ For each feature, include tests and documentation in README.
 * [x] Match kind
 * [x] Overlapping
 * [x] DFA
-* [ ] Release GIL
+* [x] Release GIL
 * [x] Benchmarks
-* [ ] Finish documentation (README)
+* [ ] Batch mode for Pandas columns
+* [ ] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals, initial benchmark results
 * [ ] Maturin builds in GitHub Actions
 * [ ] PyPI release
 
