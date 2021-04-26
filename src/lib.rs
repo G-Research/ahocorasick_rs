@@ -15,6 +15,18 @@ impl<'a> PyAhoCorasick {
         }
         Ok(())
     }
+
+    /// Return matches for a given haystack.
+    fn get_matches(&self, py: Python<'_>, haystack: &str, overlapping: bool) -> Vec<Match> {
+        let ac_impl = &self.ac_impl;
+        py.allow_threads(|| {
+            if overlapping {
+                ac_impl.find_overlapping_iter(haystack).collect()
+            } else {
+                ac_impl.find_iter(haystack).collect()
+            }
+        })
+    }
 }
 
 /// Methods for PyAhoCorasick.
@@ -54,24 +66,16 @@ impl PyAhoCorasick {
     #[args(overlapping = "false")]
     fn find_matches_as_indexes(
         self_: PyRef<Self>,
-        haystack: String,
+        haystack: &str,
         overlapping: bool,
     ) -> PyResult<Vec<(usize, usize, usize)>> {
         self_.check_overlapping(overlapping)?;
-        let ac_impl = &self_.ac_impl;
-        self_.py().allow_threads(|| {
-            if overlapping {
-                Ok(ac_impl
-                    .find_overlapping_iter(&haystack)
-                    .map(|m| (m.pattern(), m.start(), m.end()))
-                    .collect())
-            } else {
-                Ok(ac_impl
-                    .find_iter(&haystack)
-                    .map(|m| (m.pattern(), m.start(), m.end()))
-                    .collect())
-            }
-        })
+        let py = self_.py();
+        let matches = self_.get_matches(py, haystack, overlapping);
+        Ok(matches
+            .into_iter()
+            .map(|m| (m.pattern(), m.start(), m.end()))
+            .collect())
     }
 
     /// Return matches as list of patterns.
@@ -81,20 +85,13 @@ impl PyAhoCorasick {
         haystack: &str,
         overlapping: bool,
     ) -> PyResult<Vec<Py<PyUnicode>>> {
-        let py = self_.py();
         self_.check_overlapping(overlapping)?;
-        let ac_impl = &self_.ac_impl;
-        if overlapping {
-            Ok(py
-                .allow_threads(|| ac_impl.find_overlapping_iter(haystack))
-                .map(|m| self_.patterns[m.pattern()].clone_ref(py))
-                .collect())
-        } else {
-            Ok(py
-                .allow_threads(|| ac_impl.find_iter(haystack))
-                .map(|m| self_.patterns[m.pattern()].clone_ref(py))
-                .collect())
-        }
+        let py = self_.py();
+        let matches = self_.get_matches(py, haystack, overlapping);
+        Ok(matches
+            .into_iter()
+            .map(|m| self_.patterns[m.pattern()].clone_ref(py))
+            .collect())
     }
 }
 

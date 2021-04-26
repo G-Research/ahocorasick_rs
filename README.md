@@ -105,17 +105,18 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 
 ## Benchmarks
 
-This is what gets benchmarked in `benchmarks/test_comparison.py`, matching ~1000 patterns against a line of text, with the benchmarked overhead subtracted.
+Based on `benchmarks/test_comparison.py`, the benchmark matches ~1,000 patterns against 10,000 lines of text, with (some of?) the benchmarking overhead subtracted.
 
-As you can see, for longest matching pattern, `ahocorasick_rs` is faster. For overlapping matches, `pyahocorasick` is faster. Lower is better:
+Lower is better: for longest matching pattern, `ahocorasick_rs` is faster.
+For overlapping matches, `pyahocorasick` is faster.
 
-| `find_matches_as_strings` or equivalent | nanoseconds per call |
+| `find_matches_as_strings` or equivalent | milliseconds per 10K |
 |-----------------------------------------|---------------------:|
-| `ahocorasick_rs` standard matching      |                  576 |
-| `ahocorasick_rs` longest matching       |                  633 |
-| `pyahocorasick` longest matching        |                  791 |
-| `ahocorasick_rs` overlapping matching   |                 1362 |
-| `pyahocorasick` overlapping matching    |                 1139 |
+| `ahocorasick_rs` standard matching      |                 6.12 |
+| `ahocorasick_rs` longest matching       |                 6.89 |
+| `pyahocorasick` longest matching        |                 8.97 |
+| `ahocorasick_rs` overlapping matching   |                14.96 |
+| `pyahocorasick` overlapping matching    |                11.38 |
 
 > **Important:** As with any benchmark, real-world results will differ based on your particular situation. If performance is important to your application, measure the alternatives yourself!
 
@@ -129,11 +130,9 @@ For each feature, include tests and documentation in README.
 * [x] DFA
 * [x] Release GIL
 * [x] Benchmarks
-* [ ] Batch mode for Pandas columns
-* [ ] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals, initial benchmark results
+* [ ] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals
 * [ ] GitHub Actions testing setup
 * [ ] PyPI release automation
-* [ ] Update benchmarks
 * [ ] License, code of conduct, etc.
 * [ ] Initial release
 
