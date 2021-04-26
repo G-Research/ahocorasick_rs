@@ -133,6 +133,8 @@ For each feature, include tests and documentation in README.
 * [ ] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals, initial benchmark results
 * [ ] GitHub Actions testing setup
 * [ ] PyPI release automation
+* [ ] Update benchmarks
+* [ ] License, code of conduct, etc.
 * [ ] Initial release
 
 Other features in API: open issues, they seem less useful.
