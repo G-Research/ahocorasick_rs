@@ -40,6 +40,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/bin
           chmod +x /usr/bin/just
           just setup
+          just build-dev
       - name: "Tests"
         run: |
           set -euo pipefail
