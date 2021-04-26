@@ -129,20 +129,3 @@ For overlapping matches, `pyahocorasick` is faster.
 | `pyahocorasick` overlapping matching    |                11.38 |
 
 > **Important:** As with any benchmark, real-world results will differ based on your particular situation. If performance is important to your application, measure the alternatives yourself!
-
-## Features to implement
-
-For each feature, include tests and documentation in README.
-
-* [x] Basic API
-* [x] Match kind
-* [x] Overlapping
-* [x] DFA
-* [x] Release GIL
-* [x] Benchmarks
-* [x] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals
-* [x] GitHub Actions testing setup
-* [ ] PyPI release automation
-* [x] License, code of conduct, etc.
-* [ ] Initial release
-
