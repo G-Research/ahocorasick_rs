@@ -35,12 +35,12 @@ jobs:
         with:
           toolchain: stable
       - name: "Setup Just (Windows)"
-        if: startsWith(matrix.os, "windows")
+        if: ${{ matrix.os == "windows" }}
         run: |
           Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
           scoop install just
       - name: "Setup Just (POSIX)"
-        if: ${{ !startsWith(matrix.os, "windows") }}
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           set -euo pipefail
           curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to .
