@@ -43,7 +43,7 @@ jobs:
         if: ${{ !startsWith(matrix.os, "windows") }}
         run: |
           set -euo pipefail
-          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to just
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to .
           sudo mv just /usr/bin/just
           chmod +x /usr/bin/just
       - name: "Compile"
