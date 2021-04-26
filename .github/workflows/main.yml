@@ -37,7 +37,8 @@ jobs:
       - name: "Setup"
         run: |
           set -euo pipefail
-          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/bin
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to just
+          sudo mv just /usr/bin/just
           chmod +x /usr/bin/just
           just setup
           just build-dev
