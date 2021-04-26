@@ -1,14 +1,20 @@
-# Python library wrapping https://github.com/BurntSushi/aho-corasick
+# `ahocorasick_rs`: Quickly search for multiple substrings at once
 
-TODO What is Aho-Corasick?
+`ahocorasick_rs` allows you to search for multiple substrings ("patterns") in a given string ("haystack") using variations of the [Aho-Corasick algorithm](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm).
 
-The Rust Aho-Corasick library is significantly faster than `pyahocorasick`.
-This wrapper makes it accessible from Python.
+In particular, it's implemented as a wrapper of the Rust [`aho-corasick`](https://docs.rs/aho-corasick/) library, and provides a (sometimes) faster alternative to the [`pyahocorasick`](https://pyahocorasick.readthedocs.io/) library.
 
-## Quickstart
+The specific use case is searching for large numbers of patterns (in the thousands) where the Rust library's DFA-based state machine allows for faster matching.
+
+* [Quickstart](#quickstart)
+* [Additional configuration](#configuration)
+* [Implementation details](#implementation)
+* [Benchmarks](#benchmarks)
+
+## Quickstart <a name="quickstart"></a>
 
 The `ahocorasick_rs` library allows you to search for multiple strings ("patterns") within a haystack.
-For example:
+For example, let's construct a `AhoCorasick` object:
 
 ```python
 >>> import ahocorasick_rs
@@ -39,12 +45,12 @@ For example:
 ['hello', 'world', 'hello']
 ```
 
-## Additional configuration
+## Additional configuration <a name="configuration"></a>
 
 ### Match kind
 
-There three ways you can configure matching in cases where multiple patterns overlap.
-Assuming we have this starting point:
+There are three ways you can configure matching in cases where multiple patterns overlap.
+Assume we have this starting point:
 
 ```python
 >>> from ahocorasick_rs import *
@@ -54,7 +60,7 @@ Assuming we have this starting point:
 
 #### `MATCHKIND_STANDARD` (the default)
 
-This returns the first one that matches.
+This returns the pattern that matches first, semantically-speaking.
 
 ```python
 >>> AhoCorasick(patterns).find_matches_as_strings(haystack)
@@ -63,6 +69,8 @@ This returns the first one that matches.
 >>> ac.find_matches_as_strings(haystack)
 ['disc']
 ```
+
+In this case `disc` will match before `disco` or `discontent`.
 
 #### `MATCHKIND_LEFTMOST_FIRST`
 
@@ -73,6 +81,8 @@ This returns the leftmost matching pattern that appears first in the list of pat
 >>> ac.find_matches_as_strings(haystack)
 ['disco']
 ```
+
+`disco` is returned because it precedes `disc` in the list of patterns.
 
 ##### `MATCHKIND_LEFTMOST_LONGEST`
 
@@ -86,7 +96,7 @@ This returns the leftmost matching pattern that is longest:
 
 ### Overlapping matches
 
-You can get all overlapping matches, instead of just one of them, but only if you stick to the default matchkind, MATCHKIND_STANDARD:
+You can get all overlapping matches, instead of just one of them, but only if you stick to the default matchkind, `MATCHKIND_STANDARD`:
 
 ```python
 >>> from ahocorasick_rs import AhoCorasick
@@ -96,14 +106,14 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 ['disco', 'onte', 'discontent']
 ```
 
-## Implementation details
+## Implementation details <a name="implementation"></a>
 
-* The underlying library supports two implementations, one oriented towards reducing memory usage and construction time (NFA), the latter towards faster matching (DFA).
+* The underlying Rust library supports two implementations, one oriented towards reducing memory usage and construction time (NFA), the latter towards faster matching (DFA).
   The Python wrapper only exposes the DFA version, since expensive setup compensated by fast batch operations is the standard Python tradeoff.
 * Matching releases the GIL, to enable concurrency.
 * Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
 
-## Benchmarks
+## Benchmarks <a name="benchmarks"></a>
 
 Based on `benchmarks/test_comparison.py`, the benchmark matches ~1,000 patterns against 10,000 lines of text, with (some of?) the benchmarking overhead subtracted.
 
@@ -130,10 +140,9 @@ For each feature, include tests and documentation in README.
 * [x] DFA
 * [x] Release GIL
 * [x] Benchmarks
-* [ ] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals
+* [x] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals
 * [ ] GitHub Actions testing setup
 * [ ] PyPI release automation
 * [ ] License, code of conduct, etc.
 * [ ] Initial release
 
-Other features in API: open issues, they seem less useful.
