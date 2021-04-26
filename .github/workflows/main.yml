@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to .
           sudo mv just /usr/local/bin/just
-          chmod +x /usr/bin/just
+          chmod +x /usr/local/bin/just
       - name: "Compile"
         run: |
           just install-dev-dependencies
