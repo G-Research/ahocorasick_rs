@@ -141,8 +141,8 @@ For each feature, include tests and documentation in README.
 * [x] Release GIL
 * [x] Benchmarks
 * [x] Finish documentation (README) - link to underlying library, explain what the library does, its performance goals
-* [ ] GitHub Actions testing setup
+* [x] GitHub Actions testing setup
 * [ ] PyPI release automation
-* [ ] License, code of conduct, etc.
+* [x] License, code of conduct, etc.
 * [ ] Initial release
 
