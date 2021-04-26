@@ -48,7 +48,7 @@ jobs:
           chmod +x /usr/bin/just
       - name: "Compile"
         run: |
-          just setup
+          just install-dev-dependencies
           just build-dev
       - name: "Tests"
         run: |
