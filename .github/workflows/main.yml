@@ -34,15 +34,22 @@ jobs:
       - uses: "actions-rs/toolchain@v1"
         with:
           toolchain: stable
-      - name: "Setup"
+      - name: "Setup Just (Windows)"
+        if: startsWith(matrix.os, "windows")
+        run: |
+          Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+          scoop install just
+      - name: "Setup Just (POSIX)"
+        if: ${{ !startsWith(matrix.os, "windows") }}
         run: |
           set -euo pipefail
           curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to just
           sudo mv just /usr/bin/just
           chmod +x /usr/bin/just
+      - name: "Compile"
+        run: |
           just setup
           just build-dev
       - name: "Tests"
         run: |
-          set -euo pipefail
           just test
