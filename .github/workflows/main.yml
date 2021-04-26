@@ -1,0 +1,54 @@
+---
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    tags:
+      - "*"
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  tests:
+    name: "${{ matrix.os }}: Python ${{ matrix.python-version }}"
+    strategy:
+      matrix:
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
+        os: ["ubuntu-18.04", "macos-10.15", "windows-latest"]
+
+    runs-on: "${{ matrix.os }}"
+
+    env:
+      # Give nice tracebacks on segfaults.
+      PYTHONFAULTHANDLER: "true"
+
+    steps:
+      - uses: "actions/checkout@v2"
+        with:
+          # We need tags to get the correct code version:
+          fetch-depth: 0
+      - uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - uses: "actions-rs/toolchain@v1"
+        with:
+          toolchain: stable
+      - name: "Setup Just (Windows)"
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          cargo install just
+      - name: "Setup Just (POSIX)"
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to .
+          sudo mv just /usr/local/bin/just
+          chmod +x /usr/local/bin/just
+      - name: "Compile"
+        run: |
+          just install-dev-dependencies
+          just build-dev
+      - name: "Tests"
+        run: |
+          just test
