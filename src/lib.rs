@@ -8,7 +8,7 @@ struct PyAhoCorasick {
     patterns: Vec<Py<PyUnicode>>,
 }
 
-impl<'a> PyAhoCorasick {
+impl PyAhoCorasick {
     fn check_overlapping(&self, overlapping: bool) -> PyResult<()> {
         if overlapping && !self.ac_impl.supports_overlapping() {
             return Err(PyValueError::new_err("This automaton doesn't support overlapping results; perhaps you didn't use the defalt matchkind (MATCHKIND_STANDARD)?"));
