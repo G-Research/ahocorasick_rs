@@ -96,6 +96,34 @@ impl PyAhoCorasick {
                 .collect())
         }
     }
+
+    fn map_to_strings(
+        self_: PyRef<Self>,
+        haystacks: Vec<&str>,
+    ) -> PyResult<Vec<Vec<Py<PyUnicode>>>> {
+        let py = self_.py();
+        let ac_impl = &self_.ac_impl;
+
+        let matches: Vec<Vec<usize>> = py.allow_threads(|| {
+            haystacks
+                .iter()
+                .map(|haystack| {
+                    ac_impl
+                        .find_iter(haystack)
+                        .map(|pattern_match| pattern_match.pattern())
+                        .collect()
+                })
+                .collect()
+        });
+        Ok(matches
+            .into_iter()
+            .map(|vm| {
+                vm.into_iter()
+                    .map(|pattern_index| self_.patterns[pattern_index].clone_ref(py))
+                    .collect()
+            })
+            .collect())
+    }
 }
 
 /// The main Python module.
