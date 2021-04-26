@@ -1,5 +1,10 @@
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchKind};
-use pyo3::{exceptions::PyValueError, prelude::*, types::PyUnicode};
+use pyo3::{
+    exceptions::PyValueError,
+    prelude::*,
+    types::{PyList, PyUnicode},
+};
+use rayon::prelude::*;
 
 /// A Python wrapper for AhoCorasick.
 #[pyclass(name = "AhoCorasick")]
@@ -97,16 +102,13 @@ impl PyAhoCorasick {
         }
     }
 
-    fn map_to_strings(
-        self_: PyRef<Self>,
-        haystacks: Vec<&str>,
-    ) -> PyResult<Vec<Vec<Py<PyUnicode>>>> {
+    fn parallel_map_to_strings(self_: PyRef<Self>, haystacks: Vec<&str>) -> PyResult<PyObject> {
         let py = self_.py();
         let ac_impl = &self_.ac_impl;
 
         let matches: Vec<Vec<usize>> = py.allow_threads(|| {
             haystacks
-                .iter()
+                .par_iter()
                 .map(|haystack| {
                     ac_impl
                         .find_iter(haystack)
@@ -115,14 +117,17 @@ impl PyAhoCorasick {
                 })
                 .collect()
         });
-        Ok(matches
-            .into_iter()
-            .map(|vm| {
-                vm.into_iter()
-                    .map(|pattern_index| self_.patterns[pattern_index].clone_ref(py))
-                    .collect()
-            })
-            .collect())
+        Ok(PyList::new(
+            py,
+            matches.into_iter().map(|vm| {
+                PyList::new(
+                    py,
+                    vm.into_iter()
+                        .map(|pattern_index| self_.patterns[pattern_index].clone_ref(py)),
+                )
+            }),
+        )
+        .into())
     }
 }
 

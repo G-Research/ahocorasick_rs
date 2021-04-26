@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 aho-corasick = "0.7.15"
+rayon = "1.5"
 
 [dependencies.pyo3]
 version = "0.13.2"
