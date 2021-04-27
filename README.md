@@ -1,4 +1,4 @@
-# `ahocorasick_rs`: Quickly search for multiple substrings at once
+# ahocorasick_rs: Quickly search for multiple substrings at once
 
 `ahocorasick_rs` allows you to search for multiple substrings ("patterns") in a given string ("haystack") using variations of the [Aho-Corasick algorithm](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm).
 
