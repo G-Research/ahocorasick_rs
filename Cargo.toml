@@ -1,8 +1,12 @@
 [package]
 name = "ahocorasick_rs"
-version = "0.1.0"
+version = "0.9.0"
 edition = "2018"
-authors = ["G-Research", "Itamar Turner-Trauring <itamar@pythonspeed.com>"]
+authors = ["G-Research <c.rindi@gr-oss.io>", "Itamar Turner-Trauring <itamar@pythonspeed.com>"]
+description = "Search a string for multiple substrings at once"
+readme = "README.md"
+license = "Apache 2.0"
+repository = "https://github.com/G-Research/ahocorasick_rs"
 
 [lib]
 name = "ahocorasick_rs"
