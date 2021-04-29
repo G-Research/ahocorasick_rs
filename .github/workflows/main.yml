@@ -59,7 +59,7 @@ jobs:
       - name: "Wheels (Linux)"
         if: ${{ matrix.os == 'ubuntu-18.04' && matrix.python-version == '3.9' }}
         run: |
-           docker run --rm -v $(pwd):/io konstin2/maturin build
+           docker run --rm -v $(pwd):/io konstin2/maturin build --release
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
