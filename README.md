@@ -115,17 +115,34 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 
 ## Benchmarks <a name="benchmarks"></a>
 
-Based on `benchmarks/test_comparison.py`, the benchmark matches ~1,000 patterns against 10,000 lines of text, with (some of?) the benchmarking overhead subtracted.
+As with any benchmark, real-world results will differ based on your particular situation.
+If performance is important to your application, measure the alternatives yourself!
 
-Lower is better: for longest matching pattern, `ahocorasick_rs` is faster.
-For overlapping matches, `pyahocorasick` is faster.
+### Longer strings and many patterns
 
-| `find_matches_as_strings` or equivalent | milliseconds per 10K |
-|-----------------------------------------|---------------------:|
-| `ahocorasick_rs` standard matching      |                 6.12 |
-| `ahocorasick_rs` longest matching       |                 6.89 |
-| `pyahocorasick` longest matching        |                 8.97 |
-| `ahocorasick_rs` overlapping matching   |                14.96 |
-| `pyahocorasick` overlapping matching    |                11.38 |
+This benchmark matches ~4,00 patterns against 10,000 lines of text (each ~700 characters long).
+Each line matches either zero or one pattern.
 
-> **Important:** As with any benchmark, real-world results will differ based on your particular situation. If performance is important to your application, measure the alternatives yourself!
+Higher is better; `ahocorasick_rs` is much faster in both cases.
+
+| `find_matches_as_strings` or equivalent | Operations per second |
+|-----------------------------------------|--------------------:|
+| `ahocorasick_rs` longest matching       |                4.36 |
+| `pyahocorasick` longest matching        |                0.65 |
+| `ahocorasick_rs` overlapping matching   |                3.29 |
+| `pyahocorasick` overlapping matching    |                0.76 |
+
+### Shorter strings and few patterns
+
+This benchmarks matches ~10 patterns against 10,000 lines of shorter text (~70 characters).
+Each line matches ~5 patterns.
+
+Higher is better; `ahocorasick_rs` is faster for longest match, slightly slower for overlapping matches.
+
+| `find_matches_as_strings` or equivalent | Operations per second |
+|-----------------------------------------|----------------------:|
+| `ahocorasick_rs` longest matching       |                   173 |
+| `pyahocorasick` longest matching        |                   112 |
+| `ahocorasick_rs` overlapping matching   |                    79 |
+| `pyahocorasick` overlapping matching    |                    88 |
+
