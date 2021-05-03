@@ -3,3 +3,4 @@ pytest-benchmark
 flake8
 black
 pyahocorasick
+maturin
