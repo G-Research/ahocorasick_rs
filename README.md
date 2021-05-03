@@ -14,7 +14,13 @@ The specific use case is searching for large numbers of patterns (in the thousan
 ## Quickstart <a name="quickstart"></a>
 
 The `ahocorasick_rs` library allows you to search for multiple strings ("patterns") within a haystack.
-For example, let's construct a `AhoCorasick` object:
+For example, let's install the library:
+
+```shell-session
+$ pip install ahocorasick-rs
+```
+
+Then, we can construct a `AhoCorasick` object:
 
 ```python
 >>> import ahocorasick_rs
