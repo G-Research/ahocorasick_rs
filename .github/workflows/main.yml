@@ -34,17 +34,9 @@ jobs:
       - uses: "actions-rs/toolchain@v1"
         with:
           toolchain: stable
-      - name: "Setup Just (Windows)"
-        if: ${{ matrix.os == 'windows-latest' }}
+      - name: "Setup Just"
         run: |
           cargo install just
-      - name: "Setup Just (POSIX)"
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: |
-          set -euo pipefail
-          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to .
-          sudo mv just /usr/local/bin/just
-          chmod +x /usr/local/bin/just
       - name: "Compile"
         run: |
           just install-dev-dependencies
