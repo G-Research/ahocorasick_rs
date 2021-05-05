@@ -29,4 +29,4 @@ prep-benchmark:
 	echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
 
 benchmark:
-	pytest --benchmark-warmup=on benchmarks/
+	pytest benchmarks/
