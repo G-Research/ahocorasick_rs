@@ -24,7 +24,7 @@ Then, we can construct a `AhoCorasick` object:
 
 ```python
 >>> import ahocorasick_rs
->>> patterns = ["hello", "world", "fish"2]
+>>> patterns = ["hello", "world", "fish"]
 >>> haystack = "this is my first hello world. hello!"
 >>> ac = ahocorasick_rs.AhoCorasick(patterns)
 ```
