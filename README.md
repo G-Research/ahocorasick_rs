@@ -126,7 +126,7 @@ If performance is important to your application, measure the alternatives yourse
 
 ### Longer strings and many patterns
 
-This benchmark matches ~4,00 patterns against 10,000 lines of text (each ~700 characters long).
+This benchmark matches ~4,000 patterns against 10,000 lines of text (each ~700 characters long).
 Each line matches either zero or one pattern.
 
 Higher is better; `ahocorasick_rs` is much faster in both cases.
