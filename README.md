@@ -126,29 +126,29 @@ If performance is important to your application, measure the alternatives yourse
 
 ### Longer strings and many patterns
 
-This benchmark matches ~4,000 patterns against 10,000 lines of text (each ~700 characters long).
-Each line matches either zero or one pattern.
+This benchmark matches ~4,000 patterns against lines of text that are ~700 characters long.
+Each line matches either zero (90%) or one pattern (10%).
 
 Higher is better; `ahocorasick_rs` is much faster in both cases.
 
 | `find_matches_as_strings` or equivalent | Operations per second |
-|-----------------------------------------|--------------------:|
-| `ahocorasick_rs` longest matching       |                4.36 |
-| `pyahocorasick` longest matching        |                0.65 |
-| `ahocorasick_rs` overlapping matching   |                3.29 |
-| `pyahocorasick` overlapping matching    |                0.76 |
+|-----------------------------------------|---------------------:|
+| `ahocorasick_rs` longest matching       |            `436,000` |
+| `pyahocorasick` longest matching        |             `65,000` |
+| `ahocorasick_rs` overlapping matching   |            `329,000` |
+| `pyahocorasick` overlapping matching    |             `76,000` |
 
 ### Shorter strings and few patterns
 
-This benchmarks matches ~10 patterns against 10,000 lines of shorter text (~70 characters).
+This benchmarks matches ~10 patterns against lines of text that are ~70 characters long.
 Each line matches ~5 patterns.
 
 Higher is better; `ahocorasick_rs` is faster for longest match, slightly slower for overlapping matches.
 
-| `find_matches_as_strings` or equivalent | Operations per second |
-|-----------------------------------------|----------------------:|
-| `ahocorasick_rs` longest matching       |                   173 |
-| `pyahocorasick` longest matching        |                   112 |
-| `ahocorasick_rs` overlapping matching   |                    79 |
-| `pyahocorasick` overlapping matching    |                    88 |
+| `find_matches_as_strings` or equivalent | Operations per second   |
+|-----------------------------------------|------------------------:|
+| `ahocorasick_rs` longest matching       |             `1,730,000` |
+| `pyahocorasick` longest matching        |             `1,120,000` |
+| `ahocorasick_rs` overlapping matching   |               `790,000` |
+| `pyahocorasick` overlapping matching    |               `880,000` |
 
