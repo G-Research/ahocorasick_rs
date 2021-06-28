@@ -4,3 +4,4 @@ flake8
 black
 pyahocorasick
 maturin
+hypothesis

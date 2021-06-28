@@ -73,13 +73,15 @@ impl PyAhoCorasick {
         // Map UTF-8 byte index to Unicode code point index; the latter is what
         // Python users expect.
         let mut byte_to_code_point = vec![usize::MAX; haystack.len() + 1];
+        let mut max_codepoint = 0;
         for (codepoint_off, (byte_off, _)) in haystack.char_indices().enumerate() {
             byte_to_code_point[byte_off] = codepoint_off;
+            max_codepoint = codepoint_off;
         }
         // End index is exclusive (e.g. 0:3 is first 3 characters), so handle
         // the case where pattern is at end of string.
         if haystack.len() > 0 {
-            byte_to_code_point[haystack.len()] = byte_to_code_point[haystack.len() - 1] + 1;
+            byte_to_code_point[haystack.len()] = max_codepoint + 1;
         }
         let py = self_.py();
         let matches = self_.get_matches(py, haystack, overlapping);

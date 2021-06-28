@@ -2,6 +2,9 @@
 
 import pytest
 
+from hypothesis import strategies as st
+from hypothesis import given, assume
+
 from ahocorasick_rs import (
     AhoCorasick,
     MATCHKIND_STANDARD,
@@ -42,6 +45,24 @@ def test_unicode():
     expected = ["d ☃f", "há", "l🤦l"]
     assert [patterns[i] for (i, _, _) in index_matches] == expected
     assert [haystack[s:e] for (_, s, e) in index_matches] == expected
+
+
+@given(st.text(), st.text(min_size=1), st.text())
+def test_unicode_extensive(prefix, pattern, suffix):
+    """
+    Non-ASCII unicode patterns still give correct results for
+    find_matches_as_indexes(), with property-testing.
+    """
+    assume(pattern not in prefix)
+    assume(pattern not in suffix)
+    haystack = prefix + pattern + suffix
+    ac = AhoCorasick([pattern])
+
+    index_matches = ac.find_matches_as_indexes(haystack)
+    expected = [pattern]
+    assert [i for (i, _, _) in index_matches] == [0]
+    assert [haystack[s:e] for (_, s, e) in index_matches] == expected
+    assert ac.find_matches_as_strings(haystack) == [pattern]
 
 
 def test_matchkind():
