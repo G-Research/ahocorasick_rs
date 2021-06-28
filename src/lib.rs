@@ -70,11 +70,28 @@ impl PyAhoCorasick {
         overlapping: bool,
     ) -> PyResult<Vec<(usize, usize, usize)>> {
         self_.check_overlapping(overlapping)?;
+        // Map UTF-8 byte index to Unicode code point index; the latter is what
+        // Python users expect.
+        let mut byte_to_code_point = vec![usize::MAX; haystack.len() + 1];
+        for (codepoint_off, (byte_off, _)) in haystack.char_indices().enumerate() {
+            byte_to_code_point[byte_off] = codepoint_off;
+        }
+        // End index is exclusive (e.g. 0:3 is first 3 characters), so handle
+        // the case where pattern is at end of string.
+        if haystack.len() > 0 {
+            byte_to_code_point[haystack.len()] = byte_to_code_point[haystack.len() - 1] + 1;
+        }
         let py = self_.py();
         let matches = self_.get_matches(py, haystack, overlapping);
         Ok(matches
             .into_iter()
-            .map(|m| (m.pattern(), m.start(), m.end()))
+            .map(|m| {
+                (
+                    m.pattern(),
+                    byte_to_code_point[m.start()],
+                    byte_to_code_point[m.end()],
+                )
+            })
             .collect())
     }
 

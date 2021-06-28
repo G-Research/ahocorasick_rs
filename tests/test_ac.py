@@ -12,7 +12,7 @@ from ahocorasick_rs import (
 
 def test_basic_matching():
     """
-    find_matches_as_indexes() and find_matches_as_indexes() return matching
+    find_matches_as_indexes() and find_matches_as_strings() return matching
     patterns in the given string.
     """
     haystack = "hello, world, hello again"
@@ -28,6 +28,20 @@ def test_basic_matching():
 
     # find_matches_as_strings()
     assert ac.find_matches_as_strings(haystack) == expected
+
+
+def test_unicode():
+    """
+    Non-ASCII unicode patterns still give correct results for
+    find_matches_as_indexes().
+    """
+    haystack = "hello, world ☃fishá l🤦l"
+    patterns = ["d ☃f", "há", "l🤦l"]
+    ac = AhoCorasick(patterns)
+    index_matches = ac.find_matches_as_indexes(haystack)
+    expected = ["d ☃f", "há", "l🤦l"]
+    assert [patterns[i] for (i, _, _) in index_matches] == expected
+    assert [haystack[s:e] for (_, s, e) in index_matches] == expected
 
 
 def test_matchkind():
