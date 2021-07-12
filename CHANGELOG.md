@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.0
+
+* Faster performance, thanks to `PyO3` v0.14.
+
 ## 0.10.0
 
 * Fixed bug where `find_matches_as_indexes()` didn't give correct offsets for

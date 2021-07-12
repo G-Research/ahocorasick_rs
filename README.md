@@ -124,6 +124,8 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 As with any benchmark, real-world results will differ based on your particular situation.
 If performance is important to your application, measure the alternatives yourself!
 
+> **Note:** `ahocorasick_rs` v0.11 is probably even faster than the numbers below, they will be updated at some point.
+
 ### Longer strings and many patterns
 
 This benchmark matches ~4,000 patterns against lines of text that are ~700 characters long.
