@@ -124,8 +124,6 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 As with any benchmark, real-world results will differ based on your particular situation.
 If performance is important to your application, measure the alternatives yourself!
 
-> **Note:** `ahocorasick_rs` v0.11 is probably even faster than the numbers below, they will be updated at some point.
-
 ### Longer strings and many patterns
 
 This benchmark matches ~4,000 patterns against lines of text that are ~700 characters long.
@@ -145,12 +143,12 @@ Higher is better; `ahocorasick_rs` is much faster in both cases.
 This benchmarks matches ~10 patterns against lines of text that are ~70 characters long.
 Each line matches ~5 patterns.
 
-Higher is better; `ahocorasick_rs` is faster for longest match, slightly slower for overlapping matches.
+Higher is better; again, `ahocorasick_rs` is faster for both, though with a smaller margin.
 
 | `find_matches_as_strings` or equivalent | Operations per second   |
 |-----------------------------------------|------------------------:|
-| `ahocorasick_rs` longest matching       |             `1,730,000` |
+| `ahocorasick_rs` longest matching       |             `1,930,000` |
 | `pyahocorasick` longest matching        |             `1,120,000` |
-| `ahocorasick_rs` overlapping matching   |               `790,000` |
+| `ahocorasick_rs` overlapping matching   |             `1,250,000` |
 | `pyahocorasick` overlapping matching    |               `880,000` |
 
