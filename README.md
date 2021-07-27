@@ -2,7 +2,7 @@
 
 `ahocorasick_rs` allows you to search for multiple substrings ("patterns") in a given string ("haystack") using variations of the [Aho-Corasick algorithm](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm).
 
-In particular, it's implemented as a wrapper of the Rust [`aho-corasick`](https://docs.rs/aho-corasick/) library, and provides a (sometimes) faster alternative to the [`pyahocorasick`](https://pyahocorasick.readthedocs.io/) library.
+In particular, it's implemented as a wrapper of the Rust [`aho-corasick`](https://docs.rs/aho-corasick/) library, and provides a faster alternative to the [`pyahocorasick`](https://pyahocorasick.readthedocs.io/) library.
 
 The specific use case is searching for large numbers of patterns (in the thousands) where the Rust library's DFA-based state machine allows for faster matching.
 
