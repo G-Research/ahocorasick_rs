@@ -24,7 +24,9 @@ test:
 	black --check tests/
 	pytest tests/
 
+# Prepare for benchmarking; will only work on Linux:
 prep-benchmark:
+	pip install pyahocorasick
 	# Disable turbo-boost for more consistent results.
 	echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
 

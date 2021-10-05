@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0
+
+* Added support for Python 3.10.
+
 ## 0.11.0
 
 * Faster performance, thanks to `PyO3` v0.14.
