@@ -56,47 +56,65 @@ Then, we can construct a `AhoCorasick` object:
 ### Match kind
 
 There are three ways you can configure matching in cases where multiple patterns overlap.
+For a more in-depth explanation, see the [underlying Rust library's documentation of matching](https://docs.rs/aho-corasick/latest/aho_corasick/enum.MatchKind.html).
+
 Assume we have this starting point:
 
 ```python
 >>> from ahocorasick_rs import *
->>> patterns = ["disco", "disc", "discontent"]
->>> haystack = "discontent"
 ```
 
 #### `MATCHKIND_STANDARD` (the default)
 
 This returns the pattern that matches first, semantically-speaking.
+This is the default matching pattern.
 
 ```python
->>> AhoCorasick(patterns).find_matches_as_strings(haystack)
+>>> ac AhoCorasick(["disco", "disc", "discontent"])
+>>> ac.find_matches_as_strings("discontent")
 ['disc']
->>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_STANDARD)
->>> ac.find_matches_as_strings(haystack)
-['disc']
+>>> ac = AhoCorasick(["b", "abcd"])
+>>> ac.find_matches_as_strings("abcdef")
+['b']
 ```
 
 In this case `disc` will match before `disco` or `discontent`.
 
-#### `MATCHKIND_LEFTMOST_FIRST`
-
-This returns the leftmost matching pattern that appears first in the list of patterns.
+Similarly, `b` will match before `abcd` because it's earlier in the haystack:
 
 ```python
->>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_FIRST)
->>> ac.find_matches_as_strings(haystack)
-['disco']
+>>> ac = AhoCorasick(["b", "abcd"])
+>>> ac.find_matches_as_strings("abcdef")
+['b']
 ```
 
-`disco` is returned because it precedes `disc` in the list of patterns.
+#### `MATCHKIND_LEFTMOST_FIRST`
 
-##### `MATCHKIND_LEFTMOST_LONGEST`
-
-This returns the leftmost matching pattern that is longest:
+This returns the leftmost-in-the-haystack matching pattern that appears first in _the list of given patterns_.
+That means the order of patterns makes a difference:
 
 ```python
->>> ac = AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_LONGEST)
->>> ac.find_matches_as_strings(haystack)
+>>> ac = AhoCorasick(["disco", "disc"], matchkind=MATCHKIND_LEFTMOST_FIRST)
+>>> ac.find_matches_as_strings("discontent")
+['disco']
+>>> ac = AhoCorasick(["disc", "disco"], matchkind=MATCHKIND_LEFTMOST_FIRST)
+['disc']
+```
+
+Here we see `abcd` matched first, because it starts before `b`:
+
+```python
+>>> ac = AhoCorasick(["b", "abcd"], matchkind=MATCHKIND_LEFTMOST_FIRST)
+>>> ac.find_matches_as_strings("abcdef")
+['abcd']
+```
+##### `MATCHKIND_LEFTMOST_LONGEST`
+
+This returns the leftmost-in-the-haystack matching pattern that is longest:
+
+```python
+>>> ac = AhoCorasick(["disco", "disc", "discontent"], matchkind=MATCHKIND_LEFTMOST_LONGEST)
+>>> ac.find_matches_as_strings("discontent")
 ['discontent']
 ```
 
