@@ -1,6 +1,6 @@
 [package]
 name = "ahocorasick_rs"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2018"
 authors = ["G-Research <c.rindi@gr-oss.io>", "Itamar Turner-Trauring <itamar@pythonspeed.com>"]
 description = "Search a string for multiple substrings at once"
@@ -13,10 +13,10 @@ name = "ahocorasick_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-aho-corasick = "0.7.15"
+aho-corasick = "0.7"
 
 [dependencies.pyo3]
-version = "0.14.1"
+version = "0.14"
 
 [features]
 # The extension-module song and dance is explained here:
