@@ -80,7 +80,7 @@ This is the default matching pattern.
 
 In this case `disc` will match before `disco` or `discontent`.
 
-Similarly, `b` will match before `abcd` because it's earlier in the haystack:
+Similarly, `b` will match before `abcd` because it ends earlier in the haystack than `abcd` does:
 
 ```python
 >>> ac = AhoCorasick(["b", "abcd"])
