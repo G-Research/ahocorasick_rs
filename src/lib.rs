@@ -80,7 +80,7 @@ impl PyAhoCorasick {
         }
         // End index is exclusive (e.g. 0:3 is first 3 characters), so handle
         // the case where pattern is at end of string.
-        if haystack.len() > 0 {
+        if !haystack.is_empty() {
             byte_to_code_point[haystack.len()] = max_codepoint + 1;
         }
         let py = self_.py();

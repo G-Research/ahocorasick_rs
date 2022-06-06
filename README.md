@@ -6,6 +6,8 @@ In particular, it's implemented as a wrapper of the Rust [`aho-corasick`](https:
 
 The specific use case is searching for large numbers of patterns (in the thousands) where the Rust library's DFA-based state machine allows for faster matching.
 
+Found any problems or have any questions? [File an issue on the GitHub project](https://github.com/G-Research/ahocorasick_rs).
+
 * [Quickstart](#quickstart)
 * [Additional configuration](#configuration)
 * [Implementation details](#implementation)
