@@ -3,6 +3,7 @@
 ## 0.12.1
 
 * Dropped support for Python 3.6 (it is no longer maintained); users of Python 3.6 can still use older releases.
+* Improved performance a little.
 
 ## 0.12.0
 

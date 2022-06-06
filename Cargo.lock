@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "ahocorasick_rs"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "aho-corasick",
  "pyo3",
