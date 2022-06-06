@@ -6,6 +6,7 @@ authors = ["G-Research <c.rindi@gr-oss.io>", "Itamar Turner-Trauring <itamar@pyt
 description = "Search a string for multiple substrings at once"
 readme = "README.md"
 license = "Apache 2.0"
+homepage = "https://github.com/G-Research/ahocorasick_rs"
 repository = "https://github.com/G-Research/ahocorasick_rs"
 
 [lib]
