@@ -90,6 +90,7 @@ jobs:
         with:
           maturin-version: "${{ env.MATURIN_VERSION }}"
           target: aarch64
+          manylinux: auto
           args: --release --out target/wheels/
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
