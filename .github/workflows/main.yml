@@ -9,11 +9,12 @@ on:
   pull_request:
     branches: ["main"]
 
-defaults:
-  env:
-    # Give nice tracebacks on segfaults.
-    PYTHONFAULTHANDLER: "true"
-    MATURIN_VERSION: "0.12.19"
+
+env:
+  # Give nice tracebacks on segfaults.
+  PYTHONFAULTHANDLER: "true"
+  MATURIN_VERSION: "0.12.19"
+
 
 jobs:
   tests:
