@@ -9,6 +9,12 @@ on:
   pull_request:
     branches: ["main"]
 
+defaults:
+  env:
+    # Give nice tracebacks on segfaults.
+    PYTHONFAULTHANDLER: "true"
+    MATURIN_VERSION: "0.12.19"
+
 jobs:
   tests:
     name: "${{ matrix.os }}: Python ${{ matrix.python-version }}"
@@ -18,12 +24,6 @@ jobs:
         os: ["ubuntu-18.04", "macos-10.15", "windows-latest"]
 
     runs-on: "${{ matrix.os }}"
-
-    env:
-      # Give nice tracebacks on segfaults.
-      PYTHONFAULTHANDLER: "true"
-      MATURIN_VERSION: "0.12.19"
-
     steps:
       - uses: "actions/checkout@v2"
         with:
