@@ -23,6 +23,8 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         os: ["ubuntu-18.04", "macos-10.15", "windows-latest"]
+    env:
+      CIBW_ARCHS_MACOS: "x86_64 universal2"  # Do universal2 wheels
 
     runs-on: "${{ matrix.os }}"
     steps:
@@ -44,13 +46,13 @@ jobs:
       - name: "Tests"
         run: |
           just test
+      - name: "Disable universal2 on Python < 3.9"
+        if: matrix.python-version == '3.7' || matrix.python-version == '3.8'
+        run:
+          echo "CIBW_ARCHS_MACOS=x86_64 >> $GITHUB_ENV"
       - name: "Wheels (Windows/macOS)"
         uses: pypa/cibuildwheel@v2.6.1
-        
         if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-10.15' }}
-        env:
-          # Can't build universal2 wheels on Python < 3.9
-          CIBW_ARCHS_MACOS: "${{ (matrix.python-version == '3.7' || matrix.python-version == '3.8') && 'x86_64' || 'x86_64 universal2' }}"
       - name: "Wheels (Linux)"
         if: ${{ matrix.os == 'ubuntu-18.04' && matrix.python-version == '3.9' }}
         uses: messense/maturin-action@v1
