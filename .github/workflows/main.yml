@@ -39,6 +39,8 @@ jobs:
         with:
           toolchain: stable
       - uses: extractions/setup-just@v1
+        with:
+          just-version: 1.2.0
       - name: "Compile"
         run: |
           just install-dev-dependencies
