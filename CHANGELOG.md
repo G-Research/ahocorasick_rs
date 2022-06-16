@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.2
+
+* Added wheels for ARM Macs, and Linux on ARM.
+* Started distributing a source tarball for platforms lacking wheels.
+
 ## 0.12.1
 
 * Dropped support for Python 3.6 (it is no longer maintained); users of Python 3.6 can still use older releases.
