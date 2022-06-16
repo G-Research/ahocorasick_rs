@@ -38,17 +38,15 @@ jobs:
       - uses: "actions-rs/toolchain@v1"
         with:
           toolchain: stable
-      - name: "Install just"
-        run:
-          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/bin
-          sudo mv ~/bin/just /usr/bin
       - name: "Compile"
         run: |
-          just install-dev-dependencies
-          just build-dev
+          pip install -r requirements-dev.txt
+          pip install .
       - name: "Tests"
         run: |
-          just test
+          flake8 tests
+          black --check tests
+          pytest tests
       - name: "Disable universal2 on Python < 3.9"
         if: matrix.python-version == '3.7' || matrix.python-version == '3.8'
         run:
