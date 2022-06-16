@@ -23,9 +23,9 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         os: ["ubuntu-18.04", "macos-10.15", "windows-latest"]
+
     env:
-      CIBW_ARCHS_MACOS: "x86_64 universal2"  # Do universal2 wheels
-      CIBW_ARCHS_WINDOWS: "AMD64"  # Don't bother with 32-bit
+      MATURIN_EXTRA: ""
 
     runs-on: "${{ matrix.os }}"
     steps:
@@ -48,21 +48,17 @@ jobs:
           flake8 tests
           black --check tests
           pytest tests
-      - name: "Enable universal2 on Python >= 3.9"
-        if: matrix.python-version == '3.7' || matrix.python-version == '3.8'
+      - name: "Enable universal2 on Python >= 3.9 on macOS"
+        if: matrix.python-version != '3.7' && matrix.python-version != '3.8'
         run:
-          echo "CIBW_ARCHS_MACOS=x86_64" >> $GITHUB_ENV
-      - name: "Wheels (Windows/macOS)"
-        uses: pypa/cibuildwheel@v2.6.1
-        if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-10.15' }}
-      - name: "Wheels (Linux)"
-        if: ${{ matrix.os == 'ubuntu-18.04' && matrix.python-version == '3.9' }}
+          echo "MATURIN_EXTRA=--universal2" >> $GITHUB_ENV
+      - name: "Wheels"
         uses: messense/maturin-action@v1
         with:
           maturin-version: "${{ env.MATURIN_VERSION }}"
           command: build
           manylinux: auto
-          args: --release --out target/wheels/
+          args: --release --out target/wheels/ -i python${{ matrix.python-version }} ${{ env.MATURIN_EXTRA }}
       - name: "sdist"
         if: ${{ matrix.os == 'ubuntu-18.04' && matrix.python-version == '3.9' }}
         run: |
