@@ -25,6 +25,7 @@ jobs:
         os: ["ubuntu-18.04", "macos-10.15", "windows-latest"]
     env:
       CIBW_ARCHS_MACOS: "x86_64 universal2"  # Do universal2 wheels
+      CIBW_ARCHS_WINDOWS: "AMD64"  # Don't bother with 32-bit
 
     runs-on: "${{ matrix.os }}"
     steps:
