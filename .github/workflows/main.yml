@@ -38,9 +38,10 @@ jobs:
       - uses: "actions-rs/toolchain@v1"
         with:
           toolchain: stable
-      - uses: extractions/setup-just@v1
-        with:
-          just-version: 1.2.0
+      - name: "Install just"
+        run:
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/bin
+          sudo mv ~/bin/just /usr/bin
       - name: "Compile"
         run: |
           just install-dev-dependencies
