@@ -36,9 +36,7 @@ jobs:
       - uses: "actions-rs/toolchain@v1"
         with:
           toolchain: stable
-      - name: "Setup Just"
-        run: |
-          cargo install just
+      - uses: extractions/setup-just@v1
       - name: "Compile"
         run: |
           just install-dev-dependencies
