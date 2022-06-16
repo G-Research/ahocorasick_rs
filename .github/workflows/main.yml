@@ -89,7 +89,7 @@ jobs:
         uses: messense/maturin-action@v1
         with:
           maturin-version: "${{ env.MATURIN_VERSION }}"
-          target: aarch64
+          target: aarch64-unknown-linux-gnu
           manylinux: auto
           args: --release --out target/wheels/
       - name: Archive production artifacts
