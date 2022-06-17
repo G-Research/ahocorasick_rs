@@ -9,6 +9,13 @@ on:
   pull_request:
     branches: ["main"]
 
+
+env:
+  # Give nice tracebacks on segfaults.
+  PYTHONFAULTHANDLER: "true"
+  MATURIN_VERSION: "0.12.19"
+
+
 jobs:
   tests:
     name: "${{ matrix.os }}: Python ${{ matrix.python-version }}"
@@ -17,12 +24,10 @@ jobs:
         python-version: ["3.7", "3.8", "3.9", "3.10"]
         os: ["ubuntu-18.04", "macos-10.15", "windows-latest"]
 
-    runs-on: "${{ matrix.os }}"
-
     env:
-      # Give nice tracebacks on segfaults.
-      PYTHONFAULTHANDLER: "true"
+      MATURIN_EXTRA: ""
 
+    runs-on: "${{ matrix.os }}"
     steps:
       - uses: "actions/checkout@v2"
         with:
@@ -34,24 +39,59 @@ jobs:
       - uses: "actions-rs/toolchain@v1"
         with:
           toolchain: stable
-      - name: "Setup Just"
-        run: |
-          cargo install just
       - name: "Compile"
         run: |
-          just install-dev-dependencies
-          just build-dev
+          pip install -r requirements-dev.txt
+          pip install .
       - name: "Tests"
         run: |
-          just test
-      - name: "Wheels (Windows/macOS)"
-        if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-10.15' }}
-        run: |
-          pip wheel -w target/wheels/ .
-      - name: "Wheels (Linux)"
+          flake8 tests
+          black --check tests
+          pytest tests
+      - name: "Enable universal2 on Python >= 3.9 on macOS"
+        if: matrix.python-version != '3.7' && matrix.python-version != '3.8'
+        run:
+          echo "MATURIN_EXTRA=--universal2" >> $GITHUB_ENV
+      - name: "Wheels"
+        uses: messense/maturin-action@v1
+        with:
+          maturin-version: "${{ env.MATURIN_VERSION }}"
+          command: build
+          manylinux: auto
+          args: --release --out target/wheels/ -i python${{ matrix.python-version }} ${{ env.MATURIN_EXTRA }}
+      - name: "sdist"
         if: ${{ matrix.os == 'ubuntu-18.04' && matrix.python-version == '3.9' }}
         run: |
-           docker run --rm -v $(pwd):/io konstin2/maturin build --release --manylinux 2010
+          pip install maturin==${{ env.MATURIN_VERSION }}
+          maturin sdist
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Wheels
+          path: target/wheels/*.whl
+      - name: Archive production artifacts 2
+        uses: actions/upload-artifact@v2
+        with:
+          name: Wheels
+          path: target/wheels/ahocorasick*.tar.gz
+
+  cross:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          maturin-version: "${{ env.MATURIN_VERSION }}"
+          target: aarch64-unknown-linux-gnu
+          manylinux: auto
+          args: --release --out target/wheels/ -i python${{ matrix.python-version }}
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
