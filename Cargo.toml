@@ -17,7 +17,7 @@ crate-type = ["cdylib"]
 aho-corasick = "0.7"
 
 [dependencies.pyo3]
-version = "0.16"
+version = "0.17"
 
 [features]
 # The extension-module song and dance is explained here:
