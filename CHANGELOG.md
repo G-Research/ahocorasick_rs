@@ -2,7 +2,8 @@
 
 ## 0.12.3
 
-* Added support for Python 3.11.
+* Added support for Python 3.11 on x86-64 and macOS ARM (built against `rc1` for now).
+  Linux ARM will arrive once 3.11 is released and relevant infrastructure is easier to use.
 
 ## 0.12.2
 
