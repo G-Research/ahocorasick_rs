@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.3
+
+* Added support for Python 3.11.
+
 ## 0.12.2
 
 * Added wheels for ARM Macs, and Linux on ARM.
