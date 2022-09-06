@@ -21,7 +21,7 @@ jobs:
     name: "${{ matrix.os }}: Python ${{ matrix.python-version }}"
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11.0-rc.1"]
         os: ["ubuntu-18.04", "macos-10.15", "windows-latest"]
 
     env:
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11.0-rc.1"]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
