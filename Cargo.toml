@@ -1,7 +1,7 @@
 [package]
 name = "ahocorasick_rs"
 version = "0.12.2"
-edition = "2018"
+edition = "2021"
 authors = ["G-Research <c.rindi@gr-oss.io>", "Itamar Turner-Trauring <itamar@pythonspeed.com>"]
 description = "Search a string for multiple substrings at once"
 readme = "README.md"
