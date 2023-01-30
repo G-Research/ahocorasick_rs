@@ -5,7 +5,7 @@ use pyo3::{exceptions::PyValueError, prelude::*, types::PyUnicode};
 #[pyclass(name = "AhoCorasick")]
 struct PyAhoCorasick {
     ac_impl: AhoCorasick,
-    patterns: Vec<Py<PyUnicode>>,
+    patterns: Option<Vec<Py<PyUnicode>>>,
 }
 
 impl PyAhoCorasick {
@@ -27,6 +27,23 @@ impl PyAhoCorasick {
             }
         })
     }
+
+    fn get_byte_to_code_point(&self, haystack: &str) -> Vec<usize> {
+        // Map UTF-8 byte index to Unicode code point index; the latter is what
+        // Python users expect.
+        let mut byte_to_code_point = vec![usize::MAX; haystack.len() + 1];
+        let mut max_codepoint = 0;
+        for (codepoint_off, (byte_off, _)) in haystack.char_indices().enumerate() {
+            byte_to_code_point[byte_off] = codepoint_off;
+            max_codepoint = codepoint_off;
+        }
+        // End index is exclusive (e.g. 0:3 is first 3 characters), so handle
+        // the case where pattern is at end of string.
+        if !haystack.is_empty() {
+            byte_to_code_point[haystack.len()] = max_codepoint + 1;
+        }
+        byte_to_code_point
+    }
 }
 
 /// Methods for PyAhoCorasick.
@@ -34,8 +51,13 @@ impl PyAhoCorasick {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD"))]
-    fn new(py: Python, patterns: Vec<Py<PyUnicode>>, matchkind: &str) -> PyResult<Self> {
+    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = true))]
+    fn new(
+        py: Python,
+        patterns: Vec<Py<PyUnicode>>,
+        matchkind: &str,
+        store_patterns: bool,
+    ) -> PyResult<Self> {
         let matchkind = match matchkind {
             "MATCHKIND_STANDARD" => MatchKind::Standard,
             "MATCHKIND_LEFTMOST_FIRST" => MatchKind::LeftmostFirst,
@@ -58,7 +80,7 @@ impl PyAhoCorasick {
                     py.allow_threads(|| ());
                     result
                 })),
-            patterns,
+            patterns: store_patterns.then_some(patterns),
         })
     }
 
@@ -71,19 +93,7 @@ impl PyAhoCorasick {
         overlapping: bool,
     ) -> PyResult<Vec<(usize, usize, usize)>> {
         self_.check_overlapping(overlapping)?;
-        // Map UTF-8 byte index to Unicode code point index; the latter is what
-        // Python users expect.
-        let mut byte_to_code_point = vec![usize::MAX; haystack.len() + 1];
-        let mut max_codepoint = 0;
-        for (codepoint_off, (byte_off, _)) in haystack.char_indices().enumerate() {
-            byte_to_code_point[byte_off] = codepoint_off;
-            max_codepoint = codepoint_off;
-        }
-        // End index is exclusive (e.g. 0:3 is first 3 characters), so handle
-        // the case where pattern is at end of string.
-        if !haystack.is_empty() {
-            byte_to_code_point[haystack.len()] = max_codepoint + 1;
-        }
+        let byte_to_code_point = self_.get_byte_to_code_point(haystack);
         let py = self_.py();
         let matches = self_.get_matches(py, haystack, overlapping);
         Ok(matches
@@ -107,11 +117,22 @@ impl PyAhoCorasick {
     ) -> PyResult<Vec<Py<PyUnicode>>> {
         self_.check_overlapping(overlapping)?;
         let py = self_.py();
-        let matches = self_.get_matches(py, haystack, overlapping);
-        Ok(matches
-            .into_iter()
-            .map(|m| self_.patterns[m.pattern()].clone_ref(py))
-            .collect())
+        let matches = self_.get_matches(py, haystack, overlapping).into_iter();
+        Ok(if let Some(ref patterns) = self_.patterns {
+            matches
+                .map(|m| patterns[m.pattern()].clone_ref(py))
+                .collect()
+        } else {
+            let byte_to_code_point = self_.get_byte_to_code_point(haystack);
+            matches
+                .map(|m| -> Py<PyUnicode> {
+                    let start = byte_to_code_point[m.start()];
+                    let end = byte_to_code_point[m.end()];
+                    let utf8str: &str = &haystack[start..end];
+                    utf8str.into_py(py)
+                })
+                .collect()
+        })
     }
 }
 
