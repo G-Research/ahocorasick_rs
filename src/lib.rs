@@ -46,17 +46,18 @@ impl PyAhoCorasick {
                 ));
             }
         };
-        let mut rust_patterns: Vec<String> = vec![];
-        for s in patterns.iter() {
-            rust_patterns.push(s.as_ref(py).extract()?);
-        }
         Ok(Self {
-            ac_impl: py.allow_threads(|| {
-                AhoCorasickBuilder::new()
-                    .dfa(true) // DFA results in faster matches
-                    .match_kind(matchkind)
-                    .build(rust_patterns)
-            }),
+            ac_impl: AhoCorasickBuilder::new()
+                .dfa(true) // DFA results in faster matches
+                .match_kind(matchkind)
+                .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
+                    let result = chunk
+                        .iter()
+                        .filter_map(|s| s.as_ref(py).extract::<String>().ok());
+                    // Release the GIL in case some other thread wants to do work:
+                    py.allow_threads(|| ());
+                    result
+                })),
             patterns,
         })
     }
