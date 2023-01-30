@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.0
+
+* Use less memory when constructing an instance.
+
 ## 0.12.3
 
 * Added support for Python 3.11.
