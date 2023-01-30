@@ -13,6 +13,8 @@ struct PyAhoCorasick {
 }
 
 impl PyAhoCorasick {
+    /// Raise a Python ValueError if the request overlapping option is not
+    /// supported.
     fn check_overlapping(&self, overlapping: bool) -> PyResult<()> {
         if overlapping && !self.ac_impl.supports_overlapping() {
             return Err(PyValueError::new_err("This automaton doesn't support overlapping results; perhaps you didn't use the defalt matchkind (MATCHKIND_STANDARD)?"));
@@ -32,6 +34,8 @@ impl PyAhoCorasick {
         })
     }
 
+    /// Create mapping from byte index to Unicode code point (character) index
+    /// in the haystack.
     fn get_byte_to_code_point(&self, haystack: &str) -> Vec<usize> {
         // Map UTF-8 byte index to Unicode code point index; the latter is what
         // Python users expect.
@@ -89,7 +93,8 @@ impl PyAhoCorasick {
     }
 
     /// Return matches as tuple of (index_into_patterns,
-    /// start_index_in_haystack, end_index_in_haystack).
+    /// start_index_in_haystack, end_index_in_haystack). If ``overlapping`` is
+    /// ``False`` (the default), don't include overlapping results.
     #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_indexes(
         self_: PyRef<Self>,
@@ -112,7 +117,8 @@ impl PyAhoCorasick {
             .collect())
     }
 
-    /// Return matches as list of patterns.
+    /// Return matches as list of patterns (i.e. strings). If ``overlapping`` is
+    /// ``False`` (the default), don't include overlapping results.
     #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_strings(
         self_: PyRef<Self>,
