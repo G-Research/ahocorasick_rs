@@ -34,7 +34,7 @@ impl PyAhoCorasick {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[args(matchkind = "\"MATCHKIND_STANDARD\"")]
+    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD"))]
     fn new(py: Python, patterns: Vec<Py<PyUnicode>>, matchkind: &str) -> PyResult<Self> {
         let matchkind = match matchkind {
             "MATCHKIND_STANDARD" => MatchKind::Standard,
@@ -64,7 +64,7 @@ impl PyAhoCorasick {
 
     /// Return matches as tuple of (index_into_patterns,
     /// start_index_in_haystack, end_index_in_haystack).
-    #[args(overlapping = "false")]
+    #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_indexes(
         self_: PyRef<Self>,
         haystack: &str,
@@ -99,7 +99,7 @@ impl PyAhoCorasick {
     }
 
     /// Return matches as list of patterns.
-    #[args(overlapping = "false")]
+    #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_strings(
         self_: PyRef<Self>,
         haystack: &str,
