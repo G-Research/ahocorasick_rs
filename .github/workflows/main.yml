@@ -65,12 +65,12 @@ jobs:
           pip install maturin==${{ env.MATURIN_VERSION }}
           maturin sdist
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Wheels
           path: target/wheels/*.whl
       - name: Archive production artifacts 2
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Wheels
           path: target/wheels/ahocorasick*.tar.gz
@@ -93,7 +93,7 @@ jobs:
           manylinux: auto
           args: --release --out target/wheels/ -i python${{ matrix.python-version }}
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Wheels
           path: target/wheels/*.whl
