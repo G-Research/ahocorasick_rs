@@ -139,9 +139,9 @@ The former takes more work, the latter uses more memory if the patterns would ot
 You can control the behavior by using the `store_patterns` keyword argument to `AhoCorasick()`.
 
 * ``AhoCorasick(..., store_patterns=None)``: The default.
-  Use a heuristic (currently, whether total pattern lengths is less than 4096 characters) to decide whether to store patterns or not.
+  Use a heuristic (currently, whether the total of pattern string lengths is less than 4096 characters) to decide whether to store patterns or not.
 * ``AhoCorasick(..., store_patterns=True)``: Keep references to the patterns, potentially speeding up ``find_matches_as_strings()`` at the cost of using more memory.
-  For large amounts of memory this might actually slow things down due to pressure on the CPU memory cache.
+  If this uses large amounts of memory this might actually slow things down due to pressure on the CPU memory cache, and/or the performance benefit might be overwhelmed by the algorithm's search time.
 * ``AhoCorasick(..., store_patterns=False)``: Don't keep references to the patterns, saving some memory but potentially slowing down ``find_matches_as_strings()``, especially when there are only a small number of patterns and you are searching a small haystack.
 
 ## Implementation details <a name="implementation"></a>
