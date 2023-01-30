@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0
+
+* Use less memory when constructing an instance.
+* Added an option (``store_patterns``) to control whether patterns are cached on the object.
+  The new behavior is to use a heuristic by default to decide whether to cache the strings.
+
 ## 0.12.3
 
 * Added support for Python 3.11.

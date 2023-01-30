@@ -13,14 +13,18 @@ from ahocorasick_rs import (
 )
 
 
-def test_basic_matching():
+@pytest.mark.parametrize("store_patterns", [True, False, None])
+def test_basic_matching(store_patterns):
     """
     find_matches_as_indexes() and find_matches_as_strings() return matching
     patterns in the given string.
     """
     haystack = "hello, world, hello again"
     patterns = ["hello", "world"]
-    ac = AhoCorasick(patterns)
+    if store_patterns is None:
+        ac = AhoCorasick(patterns)
+    else:
+        ac = AhoCorasick(patterns, store_patterns=store_patterns)
 
     expected = ["hello", "world", "hello"]
 
@@ -33,22 +37,27 @@ def test_basic_matching():
     assert ac.find_matches_as_strings(haystack) == expected
 
 
-def test_unicode():
+@pytest.mark.parametrize("store_patterns", [True, False, None])
+def test_unicode(store_patterns):
     """
     Non-ASCII unicode patterns still give correct results for
-    find_matches_as_indexes().
+    find_matches_as_indexes() and find_matches_as_strings().
     """
     haystack = "hello, world ☃fishá l🤦l"
     patterns = ["d ☃f", "há", "l🤦l"]
-    ac = AhoCorasick(patterns)
+    if store_patterns is None:
+        ac = AhoCorasick(patterns)
+    else:
+        ac = AhoCorasick(patterns, store_patterns=store_patterns)
     index_matches = ac.find_matches_as_indexes(haystack)
     expected = ["d ☃f", "há", "l🤦l"]
     assert [patterns[i] for (i, _, _) in index_matches] == expected
     assert [haystack[s:e] for (_, s, e) in index_matches] == expected
+    assert ac.find_matches_as_strings(haystack) == expected
 
 
-@given(st.text(), st.text(min_size=1), st.text())
-def test_unicode_extensive(prefix, pattern, suffix):
+@given(st.text(), st.text(min_size=1), st.text(), st.sampled_from([True, False, None]))
+def test_unicode_extensive(prefix, pattern, suffix, store_patterns):
     """
     Non-ASCII unicode patterns still give correct results for
     find_matches_as_indexes(), with property-testing.
@@ -56,7 +65,10 @@ def test_unicode_extensive(prefix, pattern, suffix):
     assume(pattern not in prefix)
     assume(pattern not in suffix)
     haystack = prefix + pattern + suffix
-    ac = AhoCorasick([pattern])
+    if store_patterns is None:
+        ac = AhoCorasick([pattern])
+    else:
+        ac = AhoCorasick([pattern], store_patterns=store_patterns)
 
     index_matches = ac.find_matches_as_indexes(haystack)
     expected = [pattern]
