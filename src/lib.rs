@@ -1,5 +1,9 @@
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchKind};
-use pyo3::{exceptions::PyValueError, prelude::*, types::PyUnicode};
+use pyo3::{
+    exceptions::PyValueError,
+    prelude::*,
+    types::{PyList, PyUnicode},
+};
 
 /// A Python wrapper for AhoCorasick.
 #[pyclass(name = "AhoCorasick")]
@@ -114,19 +118,19 @@ impl PyAhoCorasick {
         self_: PyRef<Self>,
         haystack: &str,
         overlapping: bool,
-    ) -> PyResult<Vec<Py<PyUnicode>>> {
+    ) -> PyResult<Py<PyList>> {
         self_.check_overlapping(overlapping)?;
         let py = self_.py();
         let matches = self_.get_matches(py, haystack, overlapping).into_iter();
-        Ok(if let Some(ref patterns) = self_.patterns {
-            matches
-                .map(|m| patterns[m.pattern()].clone_ref(py))
-                .collect()
+        let result = if let Some(ref patterns) = self_.patterns {
+            PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
         } else {
-            matches
-                .map(|m| -> Py<PyUnicode> { haystack[m.start()..m.end()].into_py(py) })
-                .collect()
-        })
+            PyList::new(
+                py,
+                matches.map(|m| PyUnicode::new(py, &haystack[m.start()..m.end()])),
+            )
+        };
+        Ok(result.into())
     }
 }
 
