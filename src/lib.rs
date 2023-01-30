@@ -5,7 +5,17 @@ use pyo3::{
     types::{PyList, PyUnicode},
 };
 
-/// A Python wrapper for AhoCorasick.
+/// Search for multiple pattern strings against a single haystack string.
+///
+/// Takes three arguments:
+///
+/// * ``patterns``: A list of strings, the patterns to match against.
+/// * ``matchkind``: Defaults to ``"MATCHKING_STANDARD"``.
+/// * ``store_patterns``: If ``True``, keep a reference to the patterns, which
+///   will speed up ``find_matches_as_strings()`` but will use more memory. If
+///   ``False``, patterns will not be stored. By default uses a heuristic where
+///   a short list of small strings (up to 4KB) results in ``True``, and
+///   anything else results in ``False``.
 #[pyclass(name = "AhoCorasick")]
 struct PyAhoCorasick {
     ac_impl: AhoCorasick,
@@ -59,12 +69,12 @@ impl PyAhoCorasick {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = true))]
+    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None))]
     fn new(
         py: Python,
         patterns: Vec<Py<PyUnicode>>,
         matchkind: &str,
-        store_patterns: bool,
+        store_patterns: Option<bool>,
     ) -> PyResult<Self> {
         let matchkind = match matchkind {
             "MATCHKIND_STANDARD" => MatchKind::Standard,
@@ -76,6 +86,16 @@ impl PyAhoCorasick {
                 ));
             }
         };
+        // If store_patterns is None (the default), use a heuristic to decide
+        // whether to store patterns.
+        let store_patterns = store_patterns.unwrap_or_else(|| {
+            patterns
+                .iter()
+                // It's very unlikely we won't be able to get the length...
+                .map(|s| s.as_ref(py).len().unwrap())
+                .sum::<usize>()
+                <= 4096
+        });
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
                 .dfa(true) // DFA results in faster matches
