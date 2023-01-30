@@ -123,14 +123,8 @@ impl PyAhoCorasick {
                 .map(|m| patterns[m.pattern()].clone_ref(py))
                 .collect()
         } else {
-            let byte_to_code_point = self_.get_byte_to_code_point(haystack);
             matches
-                .map(|m| -> Py<PyUnicode> {
-                    let start = byte_to_code_point[m.start()];
-                    let end = byte_to_code_point[m.end()];
-                    let utf8str: &str = &haystack[start..end];
-                    utf8str.into_py(py)
-                })
+                .map(|m| -> Py<PyUnicode> { haystack[m.start()..m.end()].into_py(py) })
                 .collect()
         })
     }
