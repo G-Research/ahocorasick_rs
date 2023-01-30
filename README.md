@@ -132,7 +132,7 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 ['disco', 'onte', 'discontent']
 ```
 
-## Trading memory for speed
+### Trading memory for speed
 
 If you use ``find_matches_as_strings()``, there are two ways strings can be constructed: from the haystack, or by caching the patterns on the object.
 The former takes more work, the latter uses more memory if the patterns would otherwise have been garbage-collected.
