@@ -1,4 +1,4 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchKind};
+use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchError, MatchKind};
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
@@ -22,6 +22,14 @@ struct PyAhoCorasick {
     patterns: Option<Vec<Py<PyUnicode>>>,
 }
 
+/// Convert a MatchError to something meaningful to Python users
+#[cold]
+fn match_error_to_pyerror(e: MatchError) -> PyErr {
+    // TODO make sure this error is still meaningful to Python
+    // users, otherwise need to customize it
+    PyValueError::new_err(e.to_string())
+}
+
 impl PyAhoCorasick {
     /// Return matches for a given haystack.
     fn get_matches(
@@ -35,9 +43,7 @@ impl PyAhoCorasick {
             if overlapping {
                 ac_impl
                     .try_find_overlapping_iter(haystack)
-                    // TODO make sure this error is still meaningful to Python
-                    // users, otherwise need to customize it
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map_err(match_error_to_pyerror)
                     .map(|it| it.collect())
             } else {
                 Ok(ac_impl.find_iter(haystack).collect())
