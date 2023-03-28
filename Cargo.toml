@@ -14,7 +14,7 @@ name = "ahocorasick_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-aho-corasick = "0.7"
+aho-corasick = {git = "https://github.com/BurntSushi/aho-corasick.git", branch = "master"}
 
 [dependencies.pyo3]
 version = "0.18"
