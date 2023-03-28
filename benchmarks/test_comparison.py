@@ -18,7 +18,7 @@ with open(os.path.join(os.path.dirname(__file__), "names.txt")) as f:
     PATTERNS_LONG = [line.strip().lower() for line in f if len(line.strip()) > 4]
 
 
-# 90% no matches, 10% with 1 match, about 70 characters
+# 90% no matches, 10% with 1 match, about 600 characters
 def make_haystacks_long():
     line = "No one who had ever seen {} in her infancy would have supposed her born to be an heroine. Her situation in life, the character of her father and mother, her own person and disposition, were all equally against her. Her father was a clergyman, without being neglected, or poor, and a very respectable man, though his name was whatevs—and he had never been handsome. He had a considerable independence besides two good livings—and he was not in the least addicted to locking up his daughters. Her mother was a woman of useful plain sense, with a good temper, and, what is more remarkable, with a good constitution {}.".lower()
     result = []
