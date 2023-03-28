@@ -109,7 +109,9 @@ impl PyAhoCorasick {
                     // Release the GIL in case some other thread wants to do work:
                     py.allow_threads(|| ());
                     result
-                })),
+                }))
+                // TODO make sure this error is menaingful to Python users
+                .map_err(|e| PyValueError::new_err(e.to_string()))?,
             patterns: store_patterns.then_some(patterns),
         })
     }
@@ -122,7 +124,7 @@ impl PyAhoCorasick {
         self_: PyRef<Self>,
         haystack: &str,
         overlapping: bool,
-    ) -> PyResult<Vec<(usize, usize, usize)>> {
+    ) -> PyResult<Vec<(u64, usize, usize)>> {
         let byte_to_code_point = self_.get_byte_to_code_point(haystack);
         let py = self_.py();
         let matches = self_.get_matches(py, haystack, overlapping)?;
@@ -130,7 +132,7 @@ impl PyAhoCorasick {
             .into_iter()
             .map(|m| {
                 (
-                    m.pattern(),
+                    m.pattern().as_u64(),
                     byte_to_code_point[m.start()],
                     byte_to_code_point[m.end()],
                 )
