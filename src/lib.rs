@@ -99,7 +99,8 @@ impl PyAhoCorasick {
         });
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
-                .dfa(true) // DFA results in faster matches
+                // TODO consider noncontiguous, and/or auto mode; need to benchmark
+                .kind(aho_corasick::AhoCorasickKind::DFA) // DFA results in faster matches
                 .match_kind(matchkind)
                 .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
                     let result = chunk
