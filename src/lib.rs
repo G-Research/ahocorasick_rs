@@ -23,23 +23,24 @@ struct PyAhoCorasick {
 }
 
 impl PyAhoCorasick {
-    /// Raise a Python ValueError if the request overlapping option is not
-    /// supported.
-    fn check_overlapping(&self, overlapping: bool) -> PyResult<()> {
-        if overlapping && !self.ac_impl.supports_overlapping() {
-            return Err(PyValueError::new_err("This automaton doesn't support overlapping results; perhaps you didn't use the defalt matchkind (MATCHKIND_STANDARD)?"));
-        }
-        Ok(())
-    }
-
     /// Return matches for a given haystack.
-    fn get_matches(&self, py: Python<'_>, haystack: &str, overlapping: bool) -> Vec<Match> {
+    fn get_matches(
+        &self,
+        py: Python<'_>,
+        haystack: &str,
+        overlapping: bool,
+    ) -> PyResult<Vec<Match>> {
         let ac_impl = &self.ac_impl;
         py.allow_threads(|| {
             if overlapping {
-                ac_impl.find_overlapping_iter(haystack).collect()
+                ac_impl
+                    .try_find_overlapping_iter(haystack)
+                    // TODO make sure this error is still meaningful to Python
+                    // users, otherwise need to customize it
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map(|it| it.collect())
             } else {
-                ac_impl.find_iter(haystack).collect()
+                Ok(ac_impl.find_iter(haystack).collect())
             }
         })
     }
@@ -121,10 +122,9 @@ impl PyAhoCorasick {
         haystack: &str,
         overlapping: bool,
     ) -> PyResult<Vec<(usize, usize, usize)>> {
-        self_.check_overlapping(overlapping)?;
         let byte_to_code_point = self_.get_byte_to_code_point(haystack);
         let py = self_.py();
-        let matches = self_.get_matches(py, haystack, overlapping);
+        let matches = self_.get_matches(py, haystack, overlapping)?;
         Ok(matches
             .into_iter()
             .map(|m| {
@@ -145,9 +145,8 @@ impl PyAhoCorasick {
         haystack: &str,
         overlapping: bool,
     ) -> PyResult<Py<PyList>> {
-        self_.check_overlapping(overlapping)?;
         let py = self_.py();
-        let matches = self_.get_matches(py, haystack, overlapping).into_iter();
+        let matches = self_.get_matches(py, haystack, overlapping)?.into_iter();
         let result = if let Some(ref patterns) = self_.patterns {
             PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
         } else {
