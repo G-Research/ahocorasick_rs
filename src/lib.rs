@@ -76,12 +76,13 @@ impl PyAhoCorasick {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None))]
+    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None, kind = "KIND_DFA"))]
     fn new(
         py: Python,
         patterns: Vec<Py<PyUnicode>>,
         matchkind: &str,
         store_patterns: Option<bool>,
+        kind: Option<&str>,
     ) -> PyResult<Self> {
         let matchkind = match matchkind {
             "MATCHKIND_STANDARD" => MatchKind::Standard,
@@ -90,6 +91,17 @@ impl PyAhoCorasick {
             _ => {
                 return Err(PyValueError::new_err(
                     "matchkind must be one of the ahocorasick_rs.MATCHKIND_* constants.",
+                ));
+            }
+        };
+        let kind = match kind {
+            Some("KIND_NONCONTIGUOUS_NFA") => Some(aho_corasick::AhoCorasickKind::NoncontiguousNFA),
+            Some("KIND_CONTIGUOUS_NFA") => Some(aho_corasick::AhoCorasickKind::ContiguousNFA),
+            Some("KIND_DFA") => Some(aho_corasick::AhoCorasickKind::DFA),
+            None => None,
+            _ => {
+                return Err(PyValueError::new_err(
+                    "kind must be one of the ahocorasick_rs.KIND_* constants.",
                 ));
             }
         };
@@ -105,8 +117,7 @@ impl PyAhoCorasick {
         });
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
-                // TODO consider noncontiguous, and/or auto mode; need to benchmark
-                .kind(Some(aho_corasick::AhoCorasickKind::DFA)) // DFA results in faster matches
+                .kind(kind)
                 .match_kind(matchkind)
                 .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
                     let result = chunk
@@ -176,5 +187,8 @@ fn ahocorasick_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add("MATCHKIND_STANDARD", "MATCHKIND_STANDARD")?;
     m.add("MATCHKIND_LEFTMOST_FIRST", "MATCHKIND_LEFTMOST_FIRST")?;
     m.add("MATCHKIND_LEFTMOST_LONGEST", "MATCHKIND_LEFTMOST_LONGEST")?;
+    m.add("KIND_NONCONTIGUOUS_NFA", "KIND_NONCONTIGUOUS_NFA")?;
+    m.add("KIND_CONTIGUOUS_NFA", "KIND_CONTIGUOUS_NFA")?;
+    m.add("KIND_DFA", "KIND_DFA")?;
     Ok(())
 }
