@@ -71,6 +71,26 @@ impl PyAhoCorasick {
     }
 }
 
+/// Python equivalent of MatchKind.
+#[derive(Clone, Copy, Debug)]
+#[allow(clippy::upper_case_acronyms)]
+#[pyclass(name = "MatchKind")]
+enum PyMatchKind {
+    Standard,
+    LeftmostFirst,
+    LeftmostLongest,
+}
+
+impl From<PyMatchKind> for MatchKind {
+    fn from(value: PyMatchKind) -> Self {
+        match value {
+            PyMatchKind::Standard => Self::Standard,
+            PyMatchKind::LeftmostFirst => Self::LeftmostFirst,
+            PyMatchKind::LeftmostLongest => Self::LeftmostLongest,
+        }
+    }
+}
+
 /// Python equivalent of AhoCorasickKind.
 #[derive(Clone, Copy, Debug)]
 #[allow(clippy::upper_case_acronyms)]
@@ -96,24 +116,14 @@ impl From<Implementation> for AhoCorasickKind {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None, implementation = Implementation::DFA))]
+    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = Implementation::DFA))]
     fn new(
         py: Python,
         patterns: Vec<Py<PyUnicode>>,
-        matchkind: &str,
+        matchkind: PyMatchKind,
         store_patterns: Option<bool>,
         implementation: Option<Implementation>,
     ) -> PyResult<Self> {
-        let matchkind = match matchkind {
-            "MATCHKIND_STANDARD" => MatchKind::Standard,
-            "MATCHKIND_LEFTMOST_FIRST" => MatchKind::LeftmostFirst,
-            "MATCHKIND_LEFTMOST_LONGEST" => MatchKind::LeftmostLongest,
-            _ => {
-                return Err(PyValueError::new_err(
-                    "matchkind must be one of the ahocorasick_rs.MATCHKIND_* constants.",
-                ));
-            }
-        };
         // If store_patterns is None (the default), use a heuristic to decide
         // whether to store patterns.
         let store_patterns = store_patterns.unwrap_or_else(|| {
@@ -127,7 +137,7 @@ impl PyAhoCorasick {
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
                 .kind(implementation.map(|i| i.into()))
-                .match_kind(matchkind)
+                .match_kind(matchkind.into())
                 .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
                     let result = chunk
                         .iter()
@@ -191,11 +201,8 @@ impl PyAhoCorasick {
 /// The main Python module.
 #[pymodule]
 fn ahocorasick_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<PyMatchKind>()?;
     m.add_class::<Implementation>()?;
     m.add_class::<PyAhoCorasick>()?;
-    // PyO3 doesn't support auto-wrapping Enums, so we just do it manually.
-    m.add("MATCHKIND_STANDARD", "MATCHKIND_STANDARD")?;
-    m.add("MATCHKIND_LEFTMOST_FIRST", "MATCHKIND_LEFTMOST_FIRST")?;
-    m.add("MATCHKIND_LEFTMOST_LONGEST", "MATCHKIND_LEFTMOST_LONGEST")?;
     Ok(())
 }

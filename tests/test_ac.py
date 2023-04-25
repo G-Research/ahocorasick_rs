@@ -10,6 +10,7 @@ from ahocorasick_rs import (
     MATCHKIND_STANDARD,
     MATCHKIND_LEFTMOST_FIRST,
     MATCHKIND_LEFTMOST_LONGEST,
+    MatchKind,
     Implementation,
 )
 
@@ -118,10 +119,6 @@ def test_matchkind():
     def get_strings(ac):
         return ac.find_matches_as_strings(haystack)
 
-    # Bad matchkind:
-    with pytest.raises(ValueError):
-        AhoCorasick(patterns, matchkind="Lalalala")
-
     # Default is MATCHKIND_STANDARD:
     assert get_strings(AhoCorasick(patterns)) == [
         "winter",
@@ -133,15 +130,27 @@ def test_matchkind():
         "winter",
         "disc",
     ]
+    assert get_strings(AhoCorasick(patterns, matchkind=MatchKind.Standard)) == [
+        "winter",
+        "disc",
+    ]
 
     # MATCHKIND_LEFTMOST_FIRST:
     assert get_strings(AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_FIRST)) == [
         "winter",
         "disco",
     ]
+    assert get_strings(AhoCorasick(patterns, matchkind=MatchKind.LeftmostFirst)) == [
+        "winter",
+        "disco",
+    ]
 
     # MATCHKIND_LEFTMOST_LONGEST:
     assert get_strings(AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_LONGEST)) == [
+        "winter",
+        "discontent",
+    ]
+    assert get_strings(AhoCorasick(patterns, matchkind=MatchKind.LeftmostLongest)) == [
         "winter",
         "discontent",
     ]
@@ -173,7 +182,7 @@ def test_overlapping():
         with pytest.raises(ValueError):
             ac.find_matches_as_indexes(haystack, overlapping=True)
 
-    # Default is MATCHKIND_STANDARD:
+    # Default is MatchKind.Standard:
     expected = [
         "winter",
         "disc",
@@ -184,8 +193,8 @@ def test_overlapping():
     assert get_strings(AhoCorasick(patterns)) == expected
 
     # Explicit MATCHKIND_STANDARD:
-    assert get_strings(AhoCorasick(patterns, matchkind=MATCHKIND_STANDARD)) == expected
+    assert get_strings(AhoCorasick(patterns, matchkind=MatchKind.Standard)) == expected
 
     # Other matchkinds don't support overlapping.
-    assert_no_overlapping(AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_FIRST))
-    assert_no_overlapping(AhoCorasick(patterns, matchkind=MATCHKIND_LEFTMOST_LONGEST))
+    assert_no_overlapping(AhoCorasick(patterns, matchkind=MatchKind.LeftmostFirst))
+    assert_no_overlapping(AhoCorasick(patterns, matchkind=MatchKind.LeftmostLongest))

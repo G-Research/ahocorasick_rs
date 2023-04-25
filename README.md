@@ -63,10 +63,10 @@ For a more in-depth explanation, see the [underlying Rust library's documentatio
 Assume we have this starting point:
 
 ```python
->>> from ahocorasick_rs import *
+>>> from ahocorasick_rs import AhoCorasick, MatchKind
 ```
 
-#### `MATCHKIND_STANDARD` (the default)
+#### `Standard` (the default)
 
 This returns the pattern that matches first, semantically-speaking.
 This is the default matching pattern.
@@ -90,39 +90,39 @@ Similarly, `b` will match before `abcd` because it ends earlier in the haystack 
 ['b']
 ```
 
-#### `MATCHKIND_LEFTMOST_FIRST`
+#### `LeftmostFirst`
 
 This returns the leftmost-in-the-haystack matching pattern that appears first in _the list of given patterns_.
 That means the order of patterns makes a difference:
 
 ```python
->>> ac = AhoCorasick(["disco", "disc"], matchkind=MATCHKIND_LEFTMOST_FIRST)
+>>> ac = AhoCorasick(["disco", "disc"], matchkind=MatchKind.LeftmostFirst)
 >>> ac.find_matches_as_strings("discontent")
 ['disco']
->>> ac = AhoCorasick(["disc", "disco"], matchkind=MATCHKIND_LEFTMOST_FIRST)
+>>> ac = AhoCorasick(["disc", "disco"], matchkind=MatchKind.LeftmostFirst)
 ['disc']
 ```
 
 Here we see `abcd` matched first, because it starts before `b`:
 
 ```python
->>> ac = AhoCorasick(["b", "abcd"], matchkind=MATCHKIND_LEFTMOST_FIRST)
+>>> ac = AhoCorasick(["b", "abcd"], matchkind=MatchKind.LeftmostFirst)
 >>> ac.find_matches_as_strings("abcdef")
 ['abcd']
 ```
-##### `MATCHKIND_LEFTMOST_LONGEST`
+##### `LeftmostLongest`
 
 This returns the leftmost-in-the-haystack matching pattern that is longest:
 
 ```python
->>> ac = AhoCorasick(["disco", "disc", "discontent"], matchkind=MATCHKIND_LEFTMOST_LONGEST)
+>>> ac = AhoCorasick(["disco", "disc", "discontent"], matchkind=MatchKind.LeftmostLongest)
 >>> ac.find_matches_as_strings("discontent")
 ['discontent']
 ```
 
 ### Overlapping matches
 
-You can get all overlapping matches, instead of just one of them, but only if you stick to the default matchkind, `MATCHKIND_STANDARD`:
+You can get all overlapping matches, instead of just one of them, but only if you stick to the default matchkind, `MatchKind.Standard`:
 
 ```python
 >>> from ahocorasick_rs import AhoCorasick
@@ -158,6 +158,7 @@ The underlying Rust library supports [four choices](https://docs.rs/aho-corasick
 The default choice is `Implementation.DFA` since expensive setup compensated by fast batch operations is the standard Python tradeoff.
 
 ```python
+>>> from ahocorasick_rs import AhoCorasick, Implementation
 >>> ac = AhoCorasick(["disco", "disc"], implementation=Implementation.NoncontiguousNFA)
 ```
 
