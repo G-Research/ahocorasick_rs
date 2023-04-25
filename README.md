@@ -146,7 +146,7 @@ You can control the behavior by using the `store_patterns` keyword argument to `
 
 ### Algorithm implementations: trading construction speed, memory, and performance
 
-Choose the type of underlying automaton to use.
+You can choose the type of underlying automaton to use, with different performance tradeoffs.
 
 The underlying Rust library supports [four choices](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasickBuilder.html#method.kind), which are exposed:
 
