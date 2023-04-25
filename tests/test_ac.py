@@ -10,11 +10,21 @@ from ahocorasick_rs import (
     MATCHKIND_STANDARD,
     MATCHKIND_LEFTMOST_FIRST,
     MATCHKIND_LEFTMOST_LONGEST,
+    Implementation,
 )
 
 
 @pytest.mark.parametrize("store_patterns", [True, False, None])
-def test_basic_matching(store_patterns):
+@pytest.mark.parametrize(
+    "implementation",
+    [
+        None,
+        Implementation.NoncontiguousNFA,
+        Implementation.ContiguousNFA,
+        Implementation.DFA,
+    ],
+)
+def test_basic_matching(store_patterns, implementation):
     """
     find_matches_as_indexes() and find_matches_as_strings() return matching
     patterns in the given string.
@@ -24,7 +34,9 @@ def test_basic_matching(store_patterns):
     if store_patterns is None:
         ac = AhoCorasick(patterns)
     else:
-        ac = AhoCorasick(patterns, store_patterns=store_patterns)
+        ac = AhoCorasick(
+            patterns, store_patterns=store_patterns, implementation=implementation
+        )
 
     expected = ["hello", "world", "hello"]
 
@@ -38,7 +50,16 @@ def test_basic_matching(store_patterns):
 
 
 @pytest.mark.parametrize("store_patterns", [True, False, None])
-def test_unicode(store_patterns):
+@pytest.mark.parametrize(
+    "implementation",
+    [
+        None,
+        Implementation.NoncontiguousNFA,
+        Implementation.ContiguousNFA,
+        Implementation.DFA,
+    ],
+)
+def test_unicode(store_patterns, implementation):
     """
     Non-ASCII unicode patterns still give correct results for
     find_matches_as_indexes() and find_matches_as_strings().
@@ -48,7 +69,9 @@ def test_unicode(store_patterns):
     if store_patterns is None:
         ac = AhoCorasick(patterns)
     else:
-        ac = AhoCorasick(patterns, store_patterns=store_patterns)
+        ac = AhoCorasick(
+            patterns, store_patterns=store_patterns, implementation=implementation
+        )
     index_matches = ac.find_matches_as_indexes(haystack)
     expected = ["d ☃f", "há", "l🤦l"]
     assert [patterns[i] for (i, _, _) in index_matches] == expected

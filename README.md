@@ -144,10 +144,25 @@ You can control the behavior by using the `store_patterns` keyword argument to `
   If this uses large amounts of memory this might actually slow things down due to pressure on the CPU memory cache, and/or the performance benefit might be overwhelmed by the algorithm's search time.
 * ``AhoCorasick(..., store_patterns=False)``: Don't keep references to the patterns, saving some memory but potentially slowing down ``find_matches_as_strings()``, especially when there are only a small number of patterns and you are searching a small haystack.
 
+### Algorithm implementations: trading construction speed, memory, and performance
+
+You can choose the type of underlying automaton to use, with different performance tradeoffs.
+
+The underlying Rust library supports [four choices](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasickBuilder.html#method.kind), which are exposed:
+
+* `None` uses a heuristic to choose the "best" Aho-Corasick implementation for the given patterns.
+* `Implementation.NoncontiguousNFA`: A noncontiguous NFA is the fastest to be built, has moderate memory usage and is typically the slowest to execute a search.
+* `Implementation.ContiguousNFA`: A contiguous NFA is a little slower to build than a noncontiguous NFA, has excellent memory usage and is typically a little slower than a DFA for a search.
+* `Implementation.DFA`: A DFA is very slow to build, uses exorbitant amounts of memory, but will typically execute searches the fastest.
+
+The default choice is `Implementation.DFA` since expensive setup compensated by fast batch operations is the standard Python tradeoff.
+
+```python
+>>> ac = AhoCorasick(["disco", "disc"], implementation=Implementation.NoncontiguousNFA)
+```
+
 ## Implementation details <a name="implementation"></a>
 
-* The underlying Rust library supports two implementations, one oriented towards reducing memory usage and construction time (NFA), the latter towards faster matching (DFA).
-  The Python wrapper only exposes the DFA version, since expensive setup compensated by fast batch operations is the standard Python tradeoff.
 * Matching releases the GIL, to enable concurrency.
 * Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
 

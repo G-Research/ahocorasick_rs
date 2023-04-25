@@ -1,4 +1,6 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchKind};
+use aho_corasick::{
+    AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Match, MatchError, MatchKind,
+};
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
@@ -22,24 +24,29 @@ struct PyAhoCorasick {
     patterns: Option<Vec<Py<PyUnicode>>>,
 }
 
-impl PyAhoCorasick {
-    /// Raise a Python ValueError if the request overlapping option is not
-    /// supported.
-    fn check_overlapping(&self, overlapping: bool) -> PyResult<()> {
-        if overlapping && !self.ac_impl.supports_overlapping() {
-            return Err(PyValueError::new_err("This automaton doesn't support overlapping results; perhaps you didn't use the defalt matchkind (MATCHKIND_STANDARD)?"));
-        }
-        Ok(())
-    }
+/// Convert a MatchError to something meaningful to Python users
+#[cold]
+fn match_error_to_pyerror(e: MatchError) -> PyErr {
+    PyValueError::new_err(e.to_string())
+}
 
+impl PyAhoCorasick {
     /// Return matches for a given haystack.
-    fn get_matches(&self, py: Python<'_>, haystack: &str, overlapping: bool) -> Vec<Match> {
+    fn get_matches(
+        &self,
+        py: Python<'_>,
+        haystack: &str,
+        overlapping: bool,
+    ) -> PyResult<Vec<Match>> {
         let ac_impl = &self.ac_impl;
         py.allow_threads(|| {
             if overlapping {
-                ac_impl.find_overlapping_iter(haystack).collect()
+                ac_impl
+                    .try_find_overlapping_iter(haystack)
+                    .map_err(match_error_to_pyerror)
+                    .map(|it| it.collect())
             } else {
-                ac_impl.find_iter(haystack).collect()
+                Ok(ac_impl.find_iter(haystack).collect())
             }
         })
     }
@@ -64,17 +71,38 @@ impl PyAhoCorasick {
     }
 }
 
+/// Python equivalent of AhoCorasickKind.
+#[derive(Clone, Copy, Debug)]
+#[allow(clippy::upper_case_acronyms)]
+#[pyclass]
+enum Implementation {
+    NoncontiguousNFA,
+    ContiguousNFA,
+    DFA,
+}
+
+impl From<Implementation> for AhoCorasickKind {
+    fn from(value: Implementation) -> Self {
+        match value {
+            Implementation::NoncontiguousNFA => Self::NoncontiguousNFA,
+            Implementation::ContiguousNFA => Self::ContiguousNFA,
+            Implementation::DFA => Self::DFA,
+        }
+    }
+}
+
 /// Methods for PyAhoCorasick.
 #[pymethods]
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None))]
+    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None, implementation = Implementation::DFA))]
     fn new(
         py: Python,
         patterns: Vec<Py<PyUnicode>>,
         matchkind: &str,
         store_patterns: Option<bool>,
+        implementation: Option<Implementation>,
     ) -> PyResult<Self> {
         let matchkind = match matchkind {
             "MATCHKIND_STANDARD" => MatchKind::Standard,
@@ -98,7 +126,7 @@ impl PyAhoCorasick {
         });
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
-                .dfa(true) // DFA results in faster matches
+                .kind(implementation.map(|i| i.into()))
                 .match_kind(matchkind)
                 .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
                     let result = chunk
@@ -107,7 +135,9 @@ impl PyAhoCorasick {
                     // Release the GIL in case some other thread wants to do work:
                     py.allow_threads(|| ());
                     result
-                })),
+                }))
+                // TODO make sure this error is menaingful to Python users
+                .map_err(|e| PyValueError::new_err(e.to_string()))?,
             patterns: store_patterns.then_some(patterns),
         })
     }
@@ -120,16 +150,15 @@ impl PyAhoCorasick {
         self_: PyRef<Self>,
         haystack: &str,
         overlapping: bool,
-    ) -> PyResult<Vec<(usize, usize, usize)>> {
-        self_.check_overlapping(overlapping)?;
+    ) -> PyResult<Vec<(u64, usize, usize)>> {
         let byte_to_code_point = self_.get_byte_to_code_point(haystack);
         let py = self_.py();
-        let matches = self_.get_matches(py, haystack, overlapping);
+        let matches = self_.get_matches(py, haystack, overlapping)?;
         Ok(matches
             .into_iter()
             .map(|m| {
                 (
-                    m.pattern(),
+                    m.pattern().as_u64(),
                     byte_to_code_point[m.start()],
                     byte_to_code_point[m.end()],
                 )
@@ -145,9 +174,8 @@ impl PyAhoCorasick {
         haystack: &str,
         overlapping: bool,
     ) -> PyResult<Py<PyList>> {
-        self_.check_overlapping(overlapping)?;
         let py = self_.py();
-        let matches = self_.get_matches(py, haystack, overlapping).into_iter();
+        let matches = self_.get_matches(py, haystack, overlapping)?.into_iter();
         let result = if let Some(ref patterns) = self_.patterns {
             PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
         } else {
@@ -163,6 +191,7 @@ impl PyAhoCorasick {
 /// The main Python module.
 #[pymodule]
 fn ahocorasick_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Implementation>()?;
     m.add_class::<PyAhoCorasick>()?;
     // PyO3 doesn't support auto-wrapping Enums, so we just do it manually.
     m.add("MATCHKIND_STANDARD", "MATCHKIND_STANDARD")?;

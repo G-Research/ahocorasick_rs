@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.0
+
+* Upgraded to `aho-corasick` v1.0.
+* Exposed the choice between DFA, non-contiguous NFA, and contiguous NFA implementations.
+
 ## 0.13.0
 
 * Use less memory when constructing an instance.
