@@ -1,5 +1,7 @@
 """Tests for ahocorasick_rs."""
 
+from __future__ import annotations
+
 from typing import Optional
 
 import pytest
