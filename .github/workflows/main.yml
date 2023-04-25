@@ -46,6 +46,7 @@ jobs:
       - name: "Tests"
         run: |
           flake8 tests
+          mypy --strict tests  # indirect type annotation checking
           black --check tests
           pytest tests
       - name: "Enable universal2 on Python >= 3.9 on macOS"

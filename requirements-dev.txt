@@ -4,3 +4,4 @@ flake8
 black
 maturin
 hypothesis
+mypy

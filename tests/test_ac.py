@@ -1,5 +1,9 @@
 """Tests for ahocorasick_rs."""
 
+from __future__ import annotations
+
+from typing import Optional
+
 import pytest
 
 from hypothesis import strategies as st
@@ -25,7 +29,9 @@ from ahocorasick_rs import (
         Implementation.DFA,
     ],
 )
-def test_basic_matching(store_patterns, implementation):
+def test_basic_matching(
+    store_patterns: Optional[bool], implementation: Optional[Implementation]
+) -> None:
     """
     find_matches_as_indexes() and find_matches_as_strings() return matching
     patterns in the given string.
@@ -60,7 +66,9 @@ def test_basic_matching(store_patterns, implementation):
         Implementation.DFA,
     ],
 )
-def test_unicode(store_patterns, implementation):
+def test_unicode(
+    store_patterns: Optional[bool], implementation: Optional[Implementation]
+) -> None:
     """
     Non-ASCII unicode patterns still give correct results for
     find_matches_as_indexes() and find_matches_as_strings().
@@ -81,7 +89,9 @@ def test_unicode(store_patterns, implementation):
 
 
 @given(st.text(), st.text(min_size=1), st.text(), st.sampled_from([True, False, None]))
-def test_unicode_extensive(prefix, pattern, suffix, store_patterns):
+def test_unicode_extensive(
+    prefix: str, pattern: str, suffix: str, store_patterns: Optional[bool]
+) -> None:
     """
     Non-ASCII unicode patterns still give correct results for
     find_matches_as_indexes(), with property-testing.
@@ -101,7 +111,7 @@ def test_unicode_extensive(prefix, pattern, suffix, store_patterns):
     assert ac.find_matches_as_strings(haystack) == [pattern]
 
 
-def test_matchkind():
+def test_matchkind() -> None:
     """
     Different matchkinds give different results.
 
@@ -116,7 +126,7 @@ def test_matchkind():
     haystack = "This is the winter of my discontent"
     patterns = ["content", "disco", "disc", "discontent", "winter"]
 
-    def get_strings(ac):
+    def get_strings(ac: AhoCorasick) -> list[str]:
         return ac.find_matches_as_strings(haystack)
 
     # Default is MATCHKIND_STANDARD:
@@ -156,14 +166,14 @@ def test_matchkind():
     ]
 
 
-def test_overlapping():
+def test_overlapping() -> None:
     """
     It's possible to get overlapping matches, but only with MATCHKIND_STANDARD.
     """
     haystack = "This is the winter of my discontent"
     patterns = ["content", "disco", "disc", "discontent", "winter"]
 
-    def get_strings(ac):
+    def get_strings(ac: AhoCorasick) -> list[str]:
         assert ac.find_matches_as_strings(haystack) == ac.find_matches_as_strings(
             haystack, overlapping=False
         )
@@ -176,7 +186,7 @@ def test_overlapping():
         assert [haystack[s:e] for (_, s, e) in result_indexes] == result
         return result
 
-    def assert_no_overlapping(ac):
+    def assert_no_overlapping(ac: AhoCorasick) -> None:
         with pytest.raises(ValueError):
             ac.find_matches_as_strings(haystack, overlapping=True)
         with pytest.raises(ValueError):

@@ -6,6 +6,7 @@
 * Exposed the choice between DFA, non-contiguous NFA, and contiguous NFA implementations.
 * `ahocorasick.MatchKind` enum replaces the module-level `MATCHKIND_*` constants.
   (The old `MATCHKIND_*` constants are deprecated, but will continue to work so long as you were using constants rather than strings.)
+* Add type signatures.
 
 ## 0.13.0
 
