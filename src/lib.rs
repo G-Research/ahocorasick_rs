@@ -25,8 +25,6 @@ struct PyAhoCorasick {
 /// Convert a MatchError to something meaningful to Python users
 #[cold]
 fn match_error_to_pyerror(e: MatchError) -> PyErr {
-    // TODO make sure this error is still meaningful to Python
-    // users, otherwise need to customize it
     PyValueError::new_err(e.to_string())
 }
 
