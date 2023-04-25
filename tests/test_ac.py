@@ -10,15 +10,21 @@ from ahocorasick_rs import (
     MATCHKIND_STANDARD,
     MATCHKIND_LEFTMOST_FIRST,
     MATCHKIND_LEFTMOST_LONGEST,
-    KIND_NONCONTIGUOUS_NFA,
-    KIND_CONTIGUOUS_NFA,
-    KIND_DFA,
+    Implementation,
 )
 
 
 @pytest.mark.parametrize("store_patterns", [True, False, None])
-@pytest.mark.parametrize("kind", [None, KIND_NONCONTIGUOUS_NFA, KIND_CONTIGUOUS_NFA, KIND_DFA])
-def test_basic_matching(store_patterns, kind):
+@pytest.mark.parametrize(
+    "implementation",
+    [
+        None,
+        Implementation.NoncontiguousNFA,
+        Implementation.ContiguousNFA,
+        Implementation.DFA,
+    ],
+)
+def test_basic_matching(store_patterns, implementation):
     """
     find_matches_as_indexes() and find_matches_as_strings() return matching
     patterns in the given string.
@@ -28,7 +34,9 @@ def test_basic_matching(store_patterns, kind):
     if store_patterns is None:
         ac = AhoCorasick(patterns)
     else:
-        ac = AhoCorasick(patterns, store_patterns=store_patterns, kind=kind)
+        ac = AhoCorasick(
+            patterns, store_patterns=store_patterns, implementation=implementation
+        )
 
     expected = ["hello", "world", "hello"]
 
@@ -42,8 +50,16 @@ def test_basic_matching(store_patterns, kind):
 
 
 @pytest.mark.parametrize("store_patterns", [True, False, None])
-@pytest.mark.parametrize("kind", [None, KIND_NONCONTIGUOUS_NFA, KIND_CONTIGUOUS_NFA, KIND_DFA])
-def test_unicode(store_patterns, kind):
+@pytest.mark.parametrize(
+    "implementation",
+    [
+        None,
+        Implementation.NoncontiguousNFA,
+        Implementation.ContiguousNFA,
+        Implementation.DFA,
+    ],
+)
+def test_unicode(store_patterns, implementation):
     """
     Non-ASCII unicode patterns still give correct results for
     find_matches_as_indexes() and find_matches_as_strings().
@@ -53,7 +69,9 @@ def test_unicode(store_patterns, kind):
     if store_patterns is None:
         ac = AhoCorasick(patterns)
     else:
-        ac = AhoCorasick(patterns, store_patterns=store_patterns, kind=kind)
+        ac = AhoCorasick(
+            patterns, store_patterns=store_patterns, implementation=implementation
+        )
     index_matches = ac.find_matches_as_indexes(haystack)
     expected = ["d ☃f", "há", "l🤦l"]
     assert [patterns[i] for (i, _, _) in index_matches] == expected

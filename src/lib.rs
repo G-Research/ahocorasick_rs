@@ -1,4 +1,6 @@
-use aho_corasick::{AhoCorasick, AhoCorasickBuilder, Match, MatchError, MatchKind};
+use aho_corasick::{
+    AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Match, MatchError, MatchKind,
+};
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
@@ -69,18 +71,38 @@ impl PyAhoCorasick {
     }
 }
 
+/// Python equivalent of AhoCorasickKind.
+#[derive(Clone, Copy, Debug)]
+#[allow(clippy::upper_case_acronyms)]
+#[pyclass]
+enum Implementation {
+    NoncontiguousNFA,
+    ContiguousNFA,
+    DFA,
+}
+
+impl From<Implementation> for AhoCorasickKind {
+    fn from(value: Implementation) -> Self {
+        match value {
+            Implementation::NoncontiguousNFA => Self::NoncontiguousNFA,
+            Implementation::ContiguousNFA => Self::ContiguousNFA,
+            Implementation::DFA => Self::DFA,
+        }
+    }
+}
+
 /// Methods for PyAhoCorasick.
 #[pymethods]
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None, kind = "KIND_DFA"))]
+    #[pyo3(signature = (patterns, matchkind = "MATCHKIND_STANDARD", store_patterns = None, implementation = Implementation::DFA))]
     fn new(
         py: Python,
         patterns: Vec<Py<PyUnicode>>,
         matchkind: &str,
         store_patterns: Option<bool>,
-        kind: Option<&str>,
+        implementation: Option<Implementation>,
     ) -> PyResult<Self> {
         let matchkind = match matchkind {
             "MATCHKIND_STANDARD" => MatchKind::Standard,
@@ -89,17 +111,6 @@ impl PyAhoCorasick {
             _ => {
                 return Err(PyValueError::new_err(
                     "matchkind must be one of the ahocorasick_rs.MATCHKIND_* constants.",
-                ));
-            }
-        };
-        let kind = match kind {
-            Some("KIND_NONCONTIGUOUS_NFA") => Some(aho_corasick::AhoCorasickKind::NoncontiguousNFA),
-            Some("KIND_CONTIGUOUS_NFA") => Some(aho_corasick::AhoCorasickKind::ContiguousNFA),
-            Some("KIND_DFA") => Some(aho_corasick::AhoCorasickKind::DFA),
-            None => None,
-            _ => {
-                return Err(PyValueError::new_err(
-                    "kind must be one of the ahocorasick_rs.KIND_* constants.",
                 ));
             }
         };
@@ -115,7 +126,7 @@ impl PyAhoCorasick {
         });
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
-                .kind(kind)
+                .kind(implementation.map(|i| i.into()))
                 .match_kind(matchkind)
                 .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
                     let result = chunk
@@ -180,13 +191,11 @@ impl PyAhoCorasick {
 /// The main Python module.
 #[pymodule]
 fn ahocorasick_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Implementation>()?;
     m.add_class::<PyAhoCorasick>()?;
     // PyO3 doesn't support auto-wrapping Enums, so we just do it manually.
     m.add("MATCHKIND_STANDARD", "MATCHKIND_STANDARD")?;
     m.add("MATCHKIND_LEFTMOST_FIRST", "MATCHKIND_LEFTMOST_FIRST")?;
     m.add("MATCHKIND_LEFTMOST_LONGEST", "MATCHKIND_LEFTMOST_LONGEST")?;
-    m.add("KIND_NONCONTIGUOUS_NFA", "KIND_NONCONTIGUOUS_NFA")?;
-    m.add("KIND_CONTIGUOUS_NFA", "KIND_CONTIGUOUS_NFA")?;
-    m.add("KIND_DFA", "KIND_DFA")?;
     Ok(())
 }
