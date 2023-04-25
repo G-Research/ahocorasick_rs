@@ -143,7 +143,7 @@ def test_ahocorasick_rs_longest_match(benchmark, test_data):
     """ahocorasick_rs longest matches."""
     patterns, haystacks = test_data
     ac = ahocorasick_rs.AhoCorasick(
-        patterns, matchkind=ahocorasick_rs.MATCHKIND_LEFTMOST_LONGEST
+        patterns, matchkind=ahocorasick_rs.MatchKind.LeftmostLongest
     )
 
     def run():

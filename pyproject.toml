@@ -1,7 +1,10 @@
 [build-system]
-requires = ["maturin>=0.10,<0.11"]
+requires = ["maturin>=0.14,<0.15"]
 build-backend = "maturin"
 
 [project]
 name = "ahocorasick_rs"
 requires-python = ">=3.7"
+
+[tool.maturin]
+python-source = "pysrc/"
