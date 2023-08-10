@@ -119,7 +119,7 @@ impl From<Implementation> for AhoCorasickKind {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = Implementation::DFA))]
+    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = None))]
     fn new(
         py: Python,
         patterns: &PyAny,

@@ -156,12 +156,11 @@ You can choose the type of underlying automaton to use, with different performan
 
 The underlying Rust library supports [four choices](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasickBuilder.html#method.kind), which are exposed:
 
-* `None` uses a heuristic to choose the "best" Aho-Corasick implementation for the given patterns.
+* `None` uses a heuristic to choose the "best" Aho-Corasick implementation for the given patterns, balancing construction time, memory usage, and matching speed.
+  This is the default.
 * `Implementation.NoncontiguousNFA`: A noncontiguous NFA is the fastest to be built, has moderate memory usage and is typically the slowest to execute a search.
 * `Implementation.ContiguousNFA`: A contiguous NFA is a little slower to build than a noncontiguous NFA, has excellent memory usage and is typically a little slower than a DFA for a search.
 * `Implementation.DFA`: A DFA is very slow to build, uses exorbitant amounts of memory, but will typically execute searches the fastest.
-
-The default choice is `Implementation.DFA` since expensive setup compensated by fast batch operations is the standard Python tradeoff.
 
 ```python
 >>> from ahocorasick_rs import AhoCorasick, Implementation

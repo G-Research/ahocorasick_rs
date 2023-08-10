@@ -16,7 +16,7 @@ class AhoCorasick:
         patterns: Iterable[str],
         matchkind: MatchKind = MatchKind.Standard,
         store_patterns: Optional[bool] = None,
-        implementation: Optional[Implementation] = Implementation.DFA,
+        implementation: Optional[Implementation] = None,
     ) -> None: ...
     def find_matches_as_indexes(
         self, haystack: str, overlapping: bool = False
