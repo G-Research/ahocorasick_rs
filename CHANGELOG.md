@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0
+
+* Upgraded to `aho-corasick` v1.0.3, which will result in lower memory usage in some cases.
+* Dropped support for Python 3.7, which is now end of life.
+* Dropped support for macOS 10.5, which is now end of life.
+
 ## 0.14.0
 
 * Upgraded to `aho-corasick` v1.0.
