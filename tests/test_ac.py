@@ -77,10 +77,10 @@ def test_bad_iterators() -> None:
     When constructed with a bad iterator, the underlying Python error is raised.
     """
     with pytest.raises(TypeError):
-        AhoCorasick(None)
+        AhoCorasick(None)  # type: ignore
 
     with pytest.raises(TypeError):
-        AhoCorasick(["x", 12])
+        AhoCorasick(["x", 12])  # type: ignore
 
 
 @given(
