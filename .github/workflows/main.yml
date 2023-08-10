@@ -50,7 +50,7 @@ jobs:
           black --check tests
           pytest tests
       - name: "Enable universal2 on Python >= 3.9 on macOS"
-        if: ${{ matrix.os.startswith("macos") && matrix.python-version != '3.8' }}
+        if: ${{ startsWith(matrix.os, "macos") && matrix.python-version != '3.8' }}
         run:
           rustup target add aarch64-apple-darwin
           echo "CARGO_BUILD_TARGET=universal2-apple-darwin" >> $GITHUB_ENV
