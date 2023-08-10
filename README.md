@@ -9,7 +9,8 @@ The specific use case is searching for large numbers of patterns (in the thousan
 Found any problems or have any questions? [File an issue on the GitHub project](https://github.com/G-Research/ahocorasick_rs).
 
 * [Quickstart](#quickstart)
-* [Additional configuration](#configuration)
+* [Choosing the matching algorithm](#matching)
+* [Additional configuration: speed and memory usage tradeoffs](#configuration2)
 * [Implementation details](#implementation)
 * [Benchmarks](#benchmarks)
 
@@ -59,7 +60,7 @@ You can construct a `AhoCorasick` object from any iterable (including generators
 ['hello', 'world', 'hello']
 ```
 
-## Additional configuration <a name="configuration"></a>
+## Choosing the matching algorithm <a name="matching"></a>
 
 ### Match kind
 
@@ -138,6 +139,26 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 ['disco', 'onte', 'discontent']
 ```
 
+## Additional configuration: speed and memory usage tradeoffs <a name="configuration2"></a>
+
+### Algorithm implementations: trading construction speed, memory, and performance
+
+You can choose the type of underlying automaton to use, with different performance tradeoffs.
+The short version: if you want maximum matching speed, and you don't have too many patterns, try the `Implementation.DFA` implementation and see if it helps.
+
+The underlying Rust library supports [four choices](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasickBuilder.html#method.kind), which are exposed as follows:
+
+* `None` uses a heuristic to choose the "best" Aho-Corasick implementation for the given patterns, balancing construction time, memory usage, and matching speed.
+  This is the default.
+* `Implementation.NoncontiguousNFA`: A noncontiguous NFA is the fastest to be built, has moderate memory usage and is typically the slowest to execute a search.
+* `Implementation.ContiguousNFA`: A contiguous NFA is a little slower to build than a noncontiguous NFA, has excellent memory usage and is typically a little slower than a DFA for a search.
+* `Implementation.DFA`: A DFA is very slow to build, uses exorbitant amounts of memory, but will typically execute searches the fastest.
+
+```python
+>>> from ahocorasick_rs import AhoCorasick, Implementation
+>>> ac = AhoCorasick(["disco", "disc"], implementation=Implementation.DFA)
+```
+
 ### Trading memory for speed
 
 If you use ``find_matches_as_strings()``, there are two ways strings can be constructed: from the haystack, or by caching the patterns on the object.
@@ -149,23 +170,6 @@ You can control the behavior by using the `store_patterns` keyword argument to `
 * ``AhoCorasick(..., store_patterns=True)``: Keep references to the patterns, potentially speeding up ``find_matches_as_strings()`` at the cost of using more memory.
   If this uses large amounts of memory this might actually slow things down due to pressure on the CPU memory cache, and/or the performance benefit might be overwhelmed by the algorithm's search time.
 * ``AhoCorasick(..., store_patterns=False)``: Don't keep references to the patterns, saving some memory but potentially slowing down ``find_matches_as_strings()``, especially when there are only a small number of patterns and you are searching a small haystack.
-
-### Algorithm implementations: trading construction speed, memory, and performance
-
-You can choose the type of underlying automaton to use, with different performance tradeoffs.
-
-The underlying Rust library supports [four choices](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasickBuilder.html#method.kind), which are exposed:
-
-* `None` uses a heuristic to choose the "best" Aho-Corasick implementation for the given patterns, balancing construction time, memory usage, and matching speed.
-  This is the default.
-* `Implementation.NoncontiguousNFA`: A noncontiguous NFA is the fastest to be built, has moderate memory usage and is typically the slowest to execute a search.
-* `Implementation.ContiguousNFA`: A contiguous NFA is a little slower to build than a noncontiguous NFA, has excellent memory usage and is typically a little slower than a DFA for a search.
-* `Implementation.DFA`: A DFA is very slow to build, uses exorbitant amounts of memory, but will typically execute searches the fastest.
-
-```python
->>> from ahocorasick_rs import AhoCorasick, Implementation
->>> ac = AhoCorasick(["disco", "disc"], implementation=Implementation.NoncontiguousNFA)
-```
 
 ## Implementation details <a name="implementation"></a>
 
