@@ -119,36 +119,41 @@ impl PyAhoCorasick {
     #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = Implementation::DFA))]
     fn new(
         py: Python,
-        patterns: Vec<Py<PyUnicode>>,
+        patterns: &PyAny,
         matchkind: PyMatchKind,
         store_patterns: Option<bool>,
         implementation: Option<Implementation>,
     ) -> PyResult<Self> {
+        let patterns: Vec<&PyUnicode> = patterns
+            .iter()?
+            .map(|i_result| i_result.and_then(|i| i.downcast::<PyUnicode>().map_err(PyErr::from)))
+            .collect::<PyResult<Vec<&PyUnicode>>>()?;
         // If store_patterns is None (the default), use a heuristic to decide
         // whether to store patterns.
         let store_patterns = store_patterns.unwrap_or_else(|| {
-            patterns
-                .iter()
-                // It's very unlikely we won't be able to get the length...
-                .map(|s| s.as_ref(py).len().unwrap())
-                .sum::<usize>()
-                <= 4096
+            let mut total = 0;
+            for s in &patterns {
+                // Highly unlikely that strings will fail to return length, so just expect().
+                total += s.len().expect("Failed to get length of a string.");
+                if total > 4096 {
+                    return false;
+                }
+            }
+            true
         });
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
                 .kind(implementation.map(|i| i.into()))
                 .match_kind(matchkind.into())
                 .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
-                    let result = chunk
-                        .iter()
-                        .filter_map(|s| s.as_ref(py).extract::<String>().ok());
+                    let result = chunk.iter().filter_map(|s| s.extract::<String>().ok());
                     // Release the GIL in case some other thread wants to do work:
                     py.allow_threads(|| ());
                     result
                 }))
                 // TODO make sure this error is menaingful to Python users
                 .map_err(|e| PyValueError::new_err(e.to_string()))?,
-            patterns: store_patterns.then_some(patterns),
+            patterns: store_patterns.then(|| patterns.into_iter().map(|s| s.into()).collect()),
         })
     }
 

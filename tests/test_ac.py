@@ -57,6 +57,22 @@ def test_basic_matching(
 
 
 @pytest.mark.parametrize("store_patterns", [True, False, None])
+def test_iterator_of_patterns(store_patterns: Optional[bool]) -> None:
+    """
+    It's possible to construct ``AhoCorasick()`` with an iterator.
+    """
+    haystack = "hello, world, hello again"
+    patterns = iter(["hello", "world"])
+    if store_patterns is None:
+        ac = AhoCorasick(patterns)
+    else:
+        ac = AhoCorasick(patterns, store_patterns=store_patterns)
+
+    expected = ["hello", "world", "hello"]
+    assert ac.find_matches_as_strings(haystack) == expected
+
+
+@pytest.mark.parametrize("store_patterns", [True, False, None])
 @pytest.mark.parametrize(
     "implementation",
     [
