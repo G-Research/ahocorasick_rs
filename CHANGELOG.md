@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0
+
+* Upgraded to `aho-corasick` v1.0.3, which will result in lower memory usage in some cases.
+
 ## 0.14.0
 
 * Upgraded to `aho-corasick` v1.0.
