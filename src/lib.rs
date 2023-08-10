@@ -1,6 +1,7 @@
 use aho_corasick::{
     AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Match, MatchError, MatchKind,
 };
+use itertools::Itertools;
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
@@ -121,39 +122,69 @@ impl PyAhoCorasick {
         py: Python,
         patterns: &PyAny,
         matchkind: PyMatchKind,
-        store_patterns: Option<bool>,
+        mut store_patterns: Option<bool>,
         implementation: Option<Implementation>,
     ) -> PyResult<Self> {
-        let patterns: Vec<&PyUnicode> = patterns
+        // TODO need a lot more testing now!
+        // TODO nice error if input is bad iterator or doesn't always give strings...
+        // Iterator over PyResult<&PyUnicode>:
+        let mut patterns_iter = patterns
             .iter()?
-            .map(|i_result| i_result.and_then(|i| i.downcast::<PyUnicode>().map_err(PyErr::from)))
-            .collect::<PyResult<Vec<&PyUnicode>>>()?;
+            .map(|i_result| {
+                i_result
+                    .expect("Iteration should work")
+                    .downcast::<PyUnicode>()
+                    .expect("Iterable must contain only strings")
+            })
+            .fuse();
+        let mut first_few_patterns: Vec<&PyUnicode> = vec![];
         // If store_patterns is None (the default), use a heuristic to decide
         // whether to store patterns.
-        let store_patterns = store_patterns.unwrap_or_else(|| {
+        if store_patterns.is_none() {
             let mut total = 0;
-            for s in &patterns {
+            store_patterns = Some(true);
+            for s in patterns_iter.by_ref() {
                 // Highly unlikely that strings will fail to return length, so just expect().
-                total += s.len().expect("Failed to get length of a string.");
+                total += s.len().expect("String doesn't have length?");
+                first_few_patterns.push(s);
                 if total > 4096 {
-                    return false;
+                    store_patterns = Some(false);
+                    break;
                 }
             }
-            true
-        });
+        }
+        let patterns = if matches!(store_patterns, Some(true)) {
+            let mut patterns = vec![];
+            for s in patterns_iter.by_ref() {
+                first_few_patterns.push(s);
+            }
+            for s in &first_few_patterns {
+                patterns.push((*s).into());
+            }
+            Some(patterns)
+        } else {
+            None
+        };
         Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
                 .kind(implementation.map(|i| i.into()))
                 .match_kind(matchkind.into())
-                .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
-                    let result = chunk.iter().filter_map(|s| s.extract::<String>().ok());
-                    // Release the GIL in case some other thread wants to do work:
-                    py.allow_threads(|| ());
-                    result
-                }))
+                .build(
+                    first_few_patterns
+                        .into_iter()
+                        .chain(patterns_iter)
+                        .chunks(10 * 1024)
+                        .into_iter()
+                        .flat_map(|chunk| {
+                            let result = chunk.filter_map(|s| s.extract::<String>().ok());
+                            // Release the GIL in case some other thread wants to do work:
+                            py.allow_threads(|| ());
+                            result
+                        }),
+                )
                 // TODO make sure this error is menaingful to Python users
                 .map_err(|e| PyValueError::new_err(e.to_string()))?,
-            patterns: store_patterns.then(|| patterns.into_iter().map(|s| s.into()).collect()),
+            patterns,
         })
     }
 
