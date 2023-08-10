@@ -1,6 +1,9 @@
+use std::sync::{Arc, Mutex};
+
 use aho_corasick::{
     AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Match, MatchError, MatchKind,
 };
+use itertools::Itertools;
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
@@ -119,37 +122,88 @@ impl PyAhoCorasick {
     #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = Implementation::DFA))]
     fn new(
         py: Python,
-        patterns: Vec<Py<PyUnicode>>,
+        patterns: &PyAny,
         matchkind: PyMatchKind,
-        store_patterns: Option<bool>,
+        mut store_patterns: Option<bool>,
         implementation: Option<Implementation>,
     ) -> PyResult<Self> {
+        // If set, this means we had an error while parsing the strings from the patterns iterable.
+        let patterns_error: Arc<Mutex<Option<PyErr>>> = Arc::new(Mutex::new(None));
+
+        // Convert the `patterns` iterable into an Iterator over &PyUnicode:
+        let mut patterns_iter = patterns
+            .iter()?
+            .map_while(|i_result| {
+                i_result
+                    .and_then(|i| i.downcast::<PyUnicode>().map_err(PyErr::from))
+                    .map_or_else(
+                        |e| {
+                            if let Ok(mut guard) = patterns_error.lock() {
+                                *guard = Some(e);
+                            }
+                            None
+                        },
+                        Some,
+                    )
+            })
+            .fuse();
+
         // If store_patterns is None (the default), use a heuristic to decide
         // whether to store patterns.
-        let store_patterns = store_patterns.unwrap_or_else(|| {
-            patterns
-                .iter()
-                // It's very unlikely we won't be able to get the length...
-                .map(|s| s.as_ref(py).len().unwrap())
-                .sum::<usize>()
-                <= 4096
-        });
-        Ok(Self {
+        let mut first_few_patterns: Vec<&PyUnicode> = vec![];
+        if store_patterns.is_none() {
+            let mut total = 0;
+            store_patterns = Some(true);
+            for s in patterns_iter.by_ref() {
+                // Highly unlikely that strings will fail to return length, so just expect().
+                total += s.len().expect("String doesn't have length?");
+                first_few_patterns.push(s);
+                if total > 4096 {
+                    store_patterns = Some(false);
+                    break;
+                }
+            }
+        }
+        let patterns = if matches!(store_patterns, Some(true)) {
+            let mut patterns = vec![];
+            for s in patterns_iter.by_ref() {
+                first_few_patterns.push(s);
+            }
+            for s in &first_few_patterns {
+                patterns.push((*s).into());
+            }
+            Some(patterns)
+        } else {
+            None
+        };
+
+        let result = Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
                 .kind(implementation.map(|i| i.into()))
                 .match_kind(matchkind.into())
-                .build(patterns.chunks(10 * 1024).flat_map(|chunk| {
-                    let result = chunk
-                        .iter()
-                        .filter_map(|s| s.as_ref(py).extract::<String>().ok());
-                    // Release the GIL in case some other thread wants to do work:
-                    py.allow_threads(|| ());
-                    result
-                }))
+                .build(
+                    first_few_patterns
+                        .into_iter()
+                        .chain(patterns_iter)
+                        .chunks(10 * 1024)
+                        .into_iter()
+                        .flat_map(|chunk| {
+                            let result = chunk.filter_map(|s| s.extract::<String>().ok());
+                            // Release the GIL in case some other thread wants to do work:
+                            py.allow_threads(|| ());
+                            result
+                        }),
+                )
                 // TODO make sure this error is menaingful to Python users
                 .map_err(|e| PyValueError::new_err(e.to_string()))?,
-            patterns: store_patterns.then_some(patterns),
-        })
+            patterns,
+        });
+        if let Ok(mut guard) = patterns_error.lock() {
+            if let Some(err) = guard.take() {
+                return Err(err);
+            }
+        }
+        result
     }
 
     /// Return matches as tuple of (index_into_patterns,

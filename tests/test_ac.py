@@ -57,6 +57,50 @@ def test_basic_matching(
 
 
 @pytest.mark.parametrize("store_patterns", [True, False, None])
+def test_iterator_of_patterns(store_patterns: Optional[bool]) -> None:
+    """
+    It's possible to construct ``AhoCorasick()`` with an iterator.
+    """
+    haystack = "hello, world, hello again"
+    patterns = iter(["hello", "world"])
+    if store_patterns is None:
+        ac = AhoCorasick(patterns)
+    else:
+        ac = AhoCorasick(patterns, store_patterns=store_patterns)
+
+    expected = ["hello", "world", "hello"]
+    assert ac.find_matches_as_strings(haystack) == expected
+
+
+def test_bad_iterators() -> None:
+    """
+    When constructed with a bad iterator, the underlying Python error is raised.
+    """
+    with pytest.raises(TypeError):
+        AhoCorasick(None)
+
+    with pytest.raises(TypeError):
+        AhoCorasick(["x", 12])
+
+
+@given(
+    st.lists(st.text(min_size=3), min_size=1, max_size=30_000),
+    st.sampled_from([True, False, None]),
+)
+def test_construction_extensive(
+    patterns: list[str], store_patterns: Optional[bool]
+) -> None:
+    """
+    Exercise the construction code paths, ensuring we end up using all
+    patterns.
+    """
+    patterns = [f"@{p}@" for p in patterns]
+    ac = AhoCorasick(patterns, store_patterns=store_patterns)
+    for p in patterns:
+        assert ac.find_matches_as_strings(p) == [p]
+
+
+@pytest.mark.parametrize("store_patterns", [True, False, None])
 @pytest.mark.parametrize(
     "implementation",
     [
@@ -117,10 +161,10 @@ def test_matchkind() -> None:
 
     The default, MATCHKIND_STANDARD finds overlapping matches.
 
-    MATCHKIND_LEFTMOST finds the leftmost match if there are overlapping
+    MATCHKIND_LEFTMOST_FIRST finds the leftmost match if there are overlapping
     matches, choosing the earlier provided pattern.
 
-    MATCHKIND_LEFTMOST finds the leftmost match if there are overlapping
+    MATCHKIND_LEFTMOST_LONGEST finds the leftmost match if there are overlapping
     matches, picking the longest one if there are multiple ones.
     """
     haystack = "This is the winter of my discontent"
