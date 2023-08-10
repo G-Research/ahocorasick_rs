@@ -31,6 +31,12 @@ Then, we can construct a `AhoCorasick` object:
 >>> ac = ahocorasick_rs.AhoCorasick(patterns)
 ```
 
+You can construct a `AhoCorasick` object from any iterable (including generators), not just lists:
+
+```python
+>>> ac = ahocorasick_rs.AhoCorasick((p.lower() for p in patterns))
+```
+
 `AhoCorasick.find_matches_as_indexes()` returns a list of tuples, each tuple being:
 
 1. The index of the found pattern inside the list of patterns.
