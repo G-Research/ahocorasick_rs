@@ -181,31 +181,11 @@ You can control the behavior by using the `store_patterns` keyword argument to `
 As with any benchmark, real-world results will differ based on your particular situation.
 If performance is important to your application, measure the alternatives yourself!
 
-### Longer strings and many patterns
+That being said, I've seen `ahocorasick_rs` run 1.5× to 7× as fast as `pyahocorasick`, depending on the options used.
+You can run the included benchmarks, if you want, to see some comparative results locally.
+Clone the repository, then:
 
-This benchmark matches ~4,000 patterns against lines of text that are ~700 characters long.
-Each line matches either zero (90%) or one pattern (10%).
-
-Higher is better; `ahocorasick_rs` is much faster in both cases.
-
-| `find_matches_as_strings` or equivalent | Operations per second |
-|-----------------------------------------|---------------------:|
-| `ahocorasick_rs` longest matching       |            `436,000` |
-| `pyahocorasick` longest matching        |             `65,000` |
-| `ahocorasick_rs` overlapping matching   |            `329,000` |
-| `pyahocorasick` overlapping matching    |             `76,000` |
-
-### Shorter strings and few patterns
-
-This benchmarks matches ~10 patterns against lines of text that are ~70 characters long.
-Each line matches ~5 patterns.
-
-Higher is better; again, `ahocorasick_rs` is faster for both, though with a smaller margin.
-
-| `find_matches_as_strings` or equivalent | Operations per second   |
-|-----------------------------------------|------------------------:|
-| `ahocorasick_rs` longest matching       |             `1,930,000` |
-| `pyahocorasick` longest matching        |             `1,120,000` |
-| `ahocorasick_rs` overlapping matching   |             `1,250,000` |
-| `pyahocorasick` overlapping matching    |               `880,000` |
-
+```
+pip install pytest-benchmark ahocorasick_rs pyahocorasick
+pytest benchmarks/
+```
