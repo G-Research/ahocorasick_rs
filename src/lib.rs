@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use aho_corasick::{
     AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Match, MatchError, MatchKind,
 };
@@ -125,21 +127,30 @@ impl PyAhoCorasick {
         mut store_patterns: Option<bool>,
         implementation: Option<Implementation>,
     ) -> PyResult<Self> {
-        // TODO need a lot more testing now!
-        // TODO nice error if input is bad iterator or doesn't always give strings...
-        // Iterator over PyResult<&PyUnicode>:
+        // If set, this means we had an error while parsing the strings from the patterns iterable.
+        let patterns_error: Arc<Mutex<Option<PyErr>>> = Arc::new(Mutex::new(None));
+
+        // Convert the `patterns` iterable into an Iterator over &PyUnicode:
         let mut patterns_iter = patterns
             .iter()?
-            .map(|i_result| {
+            .map_while(|i_result| {
                 i_result
-                    .expect("Iteration should work")
-                    .downcast::<PyUnicode>()
-                    .expect("Iterable must contain only strings")
+                    .and_then(|i| i.downcast::<PyUnicode>().map_err(PyErr::from))
+                    .map_or_else(
+                        |e| {
+                            if let Ok(mut guard) = patterns_error.lock() {
+                                *guard = Some(e);
+                            }
+                            None
+                        },
+                        Some,
+                    )
             })
             .fuse();
-        let mut first_few_patterns: Vec<&PyUnicode> = vec![];
+
         // If store_patterns is None (the default), use a heuristic to decide
         // whether to store patterns.
+        let mut first_few_patterns: Vec<&PyUnicode> = vec![];
         if store_patterns.is_none() {
             let mut total = 0;
             store_patterns = Some(true);
@@ -165,7 +176,8 @@ impl PyAhoCorasick {
         } else {
             None
         };
-        Ok(Self {
+
+        let result = Ok(Self {
             ac_impl: AhoCorasickBuilder::new()
                 .kind(implementation.map(|i| i.into()))
                 .match_kind(matchkind.into())
@@ -185,7 +197,13 @@ impl PyAhoCorasick {
                 // TODO make sure this error is menaingful to Python users
                 .map_err(|e| PyValueError::new_err(e.to_string()))?,
             patterns,
-        })
+        });
+        if let Ok(mut guard) = patterns_error.lock() {
+            if let Some(err) = guard.take() {
+                return Err(err);
+            }
+        }
+        result
     }
 
     /// Return matches as tuple of (index_into_patterns,

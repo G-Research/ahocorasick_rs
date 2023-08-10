@@ -72,6 +72,17 @@ def test_iterator_of_patterns(store_patterns: Optional[bool]) -> None:
     assert ac.find_matches_as_strings(haystack) == expected
 
 
+def test_bad_iterators() -> None:
+    """
+    When constructed with a bad iterator, the underlying Python error is raised.
+    """
+    with pytest.raises(TypeError):
+        AhoCorasick(None)
+
+    with pytest.raises(TypeError):
+        AhoCorasick(["x", 12])
+
+
 @given(
     st.lists(st.text(min_size=3), min_size=1, max_size=30_000),
     st.sampled_from([True, False, None]),
