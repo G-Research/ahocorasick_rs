@@ -2,7 +2,8 @@
 
 ## 0.15.0
 
-* `AhoCorasick()` can now accept an iterable of strings, instead of just a list of strings, so you can lazily create patterns to save memory.
+* `AhoCorasick()` can now accept an iterable of strings, instead of just a list of strings.
+  This means you can, for example, lazily create patterns in a generator to save memory; the underlying implementation will still use the bulk of the memory, however.
 * Upgraded to `aho-corasick` v1.0.3, which will result in lower memory usage in some cases.
 * Dropped support for Python 3.7, which is now end of life.
 * Dropped support for macOS 10.5, which is now end of life.
