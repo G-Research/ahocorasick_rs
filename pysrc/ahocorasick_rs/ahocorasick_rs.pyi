@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterable
 
 class Implementation:
     NoncontiguousNFA: Implementation
@@ -13,7 +13,7 @@ class MatchKind:
 class AhoCorasick:
     def __init__(
         self,
-        patterns: list[str],
+        patterns: Iterable[str],
         matchkind: MatchKind = MatchKind.Standard,
         store_patterns: Optional[bool] = None,
         implementation: Optional[Implementation] = Implementation.DFA,
