@@ -113,6 +113,9 @@ jobs:
           name: Wheels
           path: dist/
       - run: |
+          # Remove badly named wheels:
+          rm dist/*-linux_*.whl
+          # Show what's left:
           ls -R dist/
       - name: Publish package distributions to PyPI (if tagged)
         uses: pypa/gh-action-pypi-publish@release/v1
