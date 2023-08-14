@@ -4,8 +4,6 @@
 
 In particular, it's implemented as a wrapper of the Rust [`aho-corasick`](https://docs.rs/aho-corasick/) library, and provides a faster alternative to the [`pyahocorasick`](https://pyahocorasick.readthedocs.io/) library.
 
-The specific use case is searching for large numbers of patterns (in the thousands) where the Rust library's DFA-based state machine allows for faster matching.
-
 Found any problems or have any questions? [File an issue on the GitHub project](https://github.com/G-Research/ahocorasick_rs).
 
 * [Quickstart](#quickstart)
