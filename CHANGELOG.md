@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0
+
+* Upgraded to `aho-corasick` v1.0.4, leading to massive reduction in memory usage during construction.
+
 ## 0.15.0
 
 * `AhoCorasick()` can now accept an iterable of strings, instead of just a list of strings.
