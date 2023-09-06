@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.0
+
+* Upgraded to `aho-corasick` v1.0.5, fixing performance regression in construction of `AhoCorasick` objects.
+
 ## 0.16.0
 
 * Upgraded to `aho-corasick` v1.0.4, leading to massive reduction in memory usage during construction.
