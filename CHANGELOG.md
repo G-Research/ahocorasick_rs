@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0
+
+* Upgrade to `aho-corasick` v1.1.0, which can run faster on ARM machines like newer Macs.
+
 ## 0.17.0
 
 * Upgraded to `aho-corasick` v1.0.5, fixing performance regression in construction of `AhoCorasick` objects.
