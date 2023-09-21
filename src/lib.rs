@@ -42,14 +42,19 @@ impl PyAhoCorasick {
         overlapping: bool,
     ) -> PyResult<Vec<Match>> {
         let ac_impl = &self.ac_impl;
+        // Empty patterns are basically garbage, and can break unicode codepoint
+        // boundary assumptions, so we filter them out.
         py.allow_threads(|| {
             if overlapping {
                 ac_impl
                     .try_find_overlapping_iter(haystack)
                     .map_err(match_error_to_pyerror)
-                    .map(|it| it.collect())
+                    .map(|it| it.filter(|m| m.start() != m.end()).collect())
             } else {
-                Ok(ac_impl.find_iter(haystack).collect())
+                Ok(ac_impl
+                    .find_iter(haystack)
+                    .filter(|m| m.start() != m.end())
+                    .collect())
             }
         })
     }
@@ -245,7 +250,9 @@ impl PyAhoCorasick {
         } else {
             PyList::new(
                 py,
-                matches.map(|m| PyUnicode::new(py, &haystack[m.start()..m.end()])),
+                matches.map(|m| {
+                    PyUnicode::new(py, &haystack[m.start()..m.end()])
+                }),
             )
         };
         Ok(result.into())
