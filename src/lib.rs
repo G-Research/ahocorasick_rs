@@ -1,4 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{
+    Arc, Mutex,
+}, cell::Cell};
 
 use aho_corasick::{
     AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Match, MatchError, MatchKind,
@@ -14,7 +16,9 @@ use pyo3::{
 ///
 /// Takes three arguments:
 ///
-/// * ``patterns``: A list of strings, the patterns to match against.
+/// * ``patterns``: A list of strings, the patterns to match against. Empty
+///   patterns are not supported and will result in a ``ValueError`` exception
+///   being raised.
 /// * ``matchkind``: Defaults to ``"MATCHKING_STANDARD"``.
 /// * ``store_patterns``: If ``True``, keep a reference to the patterns, which
 ///   will speed up ``find_matches_as_strings()`` but will use more memory. If
@@ -177,27 +181,39 @@ impl PyAhoCorasick {
             None
         };
 
-        let result = Ok(Self {
-            ac_impl: AhoCorasickBuilder::new()
-                .kind(implementation.map(|i| i.into()))
-                .match_kind(matchkind.into())
-                .build(
-                    first_few_patterns
-                        .into_iter()
-                        .chain(patterns_iter)
-                        .chunks(10 * 1024)
-                        .into_iter()
-                        .flat_map(|chunk| {
-                            let result = chunk.filter_map(|s| s.extract::<String>().ok());
-                            // Release the GIL in case some other thread wants to do work:
-                            py.allow_threads(|| ());
-                            result
-                        }),
-                )
-                // TODO make sure this error is menaingful to Python users
-                .map_err(|e| PyValueError::new_err(e.to_string()))?,
-            patterns,
-        });
+        let has_empty_patterns = Cell::new(false);
+        let ac_impl = AhoCorasickBuilder::new()
+            .kind(implementation.map(|i| i.into()))
+            .match_kind(matchkind.into())
+            .build(
+                first_few_patterns
+                    .into_iter()
+                    .chain(patterns_iter)
+                    .chunks(10 * 1024)
+                    .into_iter()
+                    .flat_map(|chunk| {
+                        let result =
+                            chunk
+                                .filter_map(|s| s.extract::<String>().ok())
+                                .inspect(|s| {
+                                    if s.is_empty() {
+                                        has_empty_patterns.set(true);
+                                    }
+                                });
+                        // Release the GIL in case some other thread wants to do work:
+                        py.allow_threads(|| ());
+                        result
+                    }),
+            ) // TODO make sure this error is menaingful to Python users
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+        if has_empty_patterns.get() {
+            return Err(PyValueError::new_err(
+                "You passed in an empty string as a pattern",
+            ));
+        }
+
+        let result = Ok(Self { ac_impl, patterns });
         if let Ok(mut guard) = patterns_error.lock() {
             if let Some(err) = guard.take() {
                 return Err(err);

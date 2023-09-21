@@ -155,6 +155,45 @@ def test_unicode_extensive(
     assert ac.find_matches_as_strings(haystack) == [pattern]
 
 
+@pytest.mark.parametrize("bad_patterns", [[""], ["", "xx"], ["xx", ""]])
+@pytest.mark.parametrize("store_patterns", [True, False])
+def test_empty_patterns_are_not_legal(
+    bad_patterns: list[str], store_patterns: bool
+) -> None:
+    """
+    Passing in an empty pattern suggests a bug in user code, and the outputs
+    are bad when you do have that, so raise an error.
+    """
+    with pytest.raises(ValueError) as e:
+        AhoCorasick(bad_patterns, store_patterns=store_patterns)
+    assert "You passed in an empty string as a pattern" in str(e.value)
+
+
+@given(st.text(min_size=1), st.text(), st.sampled_from([True, False, None]))
+def test_unicode_totally_random(
+    pattern: str, haystack: str, store_patterns: Optional[bool]
+) -> None:
+    """
+    Catch more edge cases of patterns and haystacks.
+    """
+    if store_patterns is None:
+        ac = AhoCorasick([pattern])
+    else:
+        ac = AhoCorasick([pattern], store_patterns=store_patterns)
+
+    index_matches = ac.find_matches_as_indexes(haystack)
+    string_matches = ac.find_matches_as_strings(haystack)
+
+    expected_index = haystack.find(pattern)
+    if expected_index == -1:
+        assert index_matches == []
+        assert string_matches == []
+    else:
+        assert index_matches[0][1] == expected_index
+        assert [haystack[s:e] for (_, s, e) in index_matches][0] == pattern
+        assert string_matches[0] == pattern
+
+
 def test_matchkind() -> None:
     """
     Different matchkinds give different results.

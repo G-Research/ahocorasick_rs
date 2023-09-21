@@ -19,9 +19,12 @@ install-dev-dependencies:
 
 setup: venv install-dev-dependencies
 
-test:
+lint:
 	flake8 tests/
 	black --check tests/
+	mypy --strict tests
+
+test:
 	pytest tests/
 
 # Prepare for benchmarking; will only work on Linux:
