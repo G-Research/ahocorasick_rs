@@ -14,7 +14,9 @@ use pyo3::{
 ///
 /// Takes three arguments:
 ///
-/// * ``patterns``: A list of strings, the patterns to match against.
+/// * ``patterns``: A list of strings, the patterns to match against. Empty
+///   patterns are not supported and will result in a ``ValueError`` exception
+///   being raised.
 /// * ``matchkind``: Defaults to ``"MATCHKING_STANDARD"``.
 /// * ``store_patterns``: If ``True``, keep a reference to the patterns, which
 ///   will speed up ``find_matches_as_strings()`` but will use more memory. If
