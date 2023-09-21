@@ -42,19 +42,14 @@ impl PyAhoCorasick {
         overlapping: bool,
     ) -> PyResult<Vec<Match>> {
         let ac_impl = &self.ac_impl;
-        // Empty patterns are basically garbage, and can break unicode codepoint
-        // boundary assumptions, so we filter them out.
         py.allow_threads(|| {
             if overlapping {
                 ac_impl
                     .try_find_overlapping_iter(haystack)
                     .map_err(match_error_to_pyerror)
-                    .map(|it| it.filter(|m| m.start() != m.end()).collect())
+                    .map(|it| it.collect())
             } else {
-                Ok(ac_impl
-                    .find_iter(haystack)
-                    .filter(|m| m.start() != m.end())
-                    .collect())
+                Ok(ac_impl.find_iter(haystack).collect())
             }
         })
     }
@@ -141,6 +136,15 @@ impl PyAhoCorasick {
             .map_while(|i_result| {
                 i_result
                     .and_then(|i| i.downcast::<PyUnicode>().map_err(PyErr::from))
+                    .and_then(|s| {
+                        if s.len().expect("Failed to get length of string?!") != 0 {
+                            Ok(s)
+                        } else {
+                            Err(PyValueError::new_err(
+                                "You passed in an empty string as a pattern",
+                            ))
+                        }
+                    })
                     .map_or_else(
                         |e| {
                             if let Ok(mut guard) = patterns_error.lock() {
@@ -250,9 +254,7 @@ impl PyAhoCorasick {
         } else {
             PyList::new(
                 py,
-                matches.map(|m| {
-                    PyUnicode::new(py, &haystack[m.start()..m.end()])
-                }),
+                matches.map(|m| PyUnicode::new(py, &haystack[m.start()..m.end()])),
             )
         };
         Ok(result.into())
