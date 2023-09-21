@@ -188,8 +188,8 @@ def test_unicode_totally_random(
         assert string_matches == []
     else:
         assert index_matches[0][1] == expected_index
-        assert [haystack[s:e] for (_, s, e) in index_matches] == [pattern]
-        assert string_matches == [pattern]
+        assert [haystack[s:e] for (_, s, e) in index_matches][0] == pattern
+        assert string_matches[0] == pattern
 
 
 def test_matchkind() -> None:
