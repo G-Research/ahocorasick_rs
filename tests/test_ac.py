@@ -157,7 +157,9 @@ def test_unicode_extensive(
 
 @pytest.mark.parametrize("bad_patterns", [[""], ["", "xx"], ["xx", ""]])
 @pytest.mark.parametrize("store_patterns", [True, False])
-def test_empty_patterns_are_not_legal(bad_patterns, store_patterns):
+def test_empty_patterns_are_not_legal(
+    bad_patterns: list[str], store_patterns: bool
+) -> None:
     """
     Passing in an empty pattern suggests a bug in user code, and the outputs
     are bad when you do have that, so raise an error.
