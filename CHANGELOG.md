@@ -1,8 +1,14 @@
 # Changelog
 
+## 0.19.0
+
+* If an empty string is passed in as a pattern, `AhoCorasick()` will now raise a `ValueError`.
+  Previously using empty patterns could result in garbage results or exceptions when matching.
+* Upgraded to `aho-corasick` v1.1.1.
+
 ## 0.18.0
 
-* Upgrade to `aho-corasick` v1.1.0, which can run faster on ARM machines like newer Macs.
+* Upgraded to `aho-corasick` v1.1.0, which can run faster on ARM machines like newer Macs.
 
 ## 0.17.0
 
