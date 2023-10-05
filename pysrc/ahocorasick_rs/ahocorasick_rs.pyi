@@ -1,4 +1,5 @@
 from typing import Optional, Iterable
+from collections.abc import Buffer
 
 class Implementation:
     NoncontiguousNFA: Implementation
@@ -24,3 +25,15 @@ class AhoCorasick:
     def find_matches_as_strings(
         self, haystack: str, overlapping: bool = False
     ) -> list[str]: ...
+
+
+class BytesAhoCorasick:
+    def __init__(
+        self,
+        patterns: Iterable[Buffer],
+        matchkind: MatchKind = MatchKind.Standard,
+        implementation: Optional[Implementation] = None,
+    ) -> None: ...
+    def find_matches_as_indexes(
+        self, haystack: Buffer, overlapping: bool = False
+    ) -> list[tuple[int, int, int]]: ...

@@ -7,7 +7,8 @@ use aho_corasick::{
 };
 use itertools::Itertools;
 use pyo3::{
-    exceptions::PyValueError,
+    buffer::{PyBuffer, ReadOnlyCell},
+    exceptions::{PyTypeError, PyValueError},
     prelude::*,
     types::{PyList, PyUnicode},
 };
@@ -37,27 +38,36 @@ fn match_error_to_pyerror(e: MatchError) -> PyErr {
     PyValueError::new_err(e.to_string())
 }
 
-impl PyAhoCorasick {
-    /// Return matches for a given haystack.
-    fn get_matches(
-        &self,
-        py: Python<'_>,
-        haystack: &str,
-        overlapping: bool,
-    ) -> PyResult<Vec<Match>> {
-        let ac_impl = &self.ac_impl;
-        py.allow_threads(|| {
-            if overlapping {
-                ac_impl
-                    .try_find_overlapping_iter(haystack)
-                    .map_err(match_error_to_pyerror)
-                    .map(|it| it.collect())
-            } else {
-                Ok(ac_impl.find_iter(haystack).collect())
-            }
-        })
+/// Return matches for a given haystack.
+fn get_matches<'a>(
+    ac_impl: &'a AhoCorasick,
+    haystack: &'a [u8],
+    overlapping: bool,
+) -> PyResult<impl Iterator<Item = Match> + 'a> {
+    let mut overlapping_it = None;
+    let mut non_overlapping_it = None;
+
+    if overlapping {
+        overlapping_it = Some(
+            ac_impl
+                .try_find_overlapping_iter(haystack)
+                .map_err(match_error_to_pyerror)?,
+        );
+    } else {
+        non_overlapping_it = Some(
+            ac_impl
+                .try_find_iter(haystack)
+                .map_err(match_error_to_pyerror)?,
+        );
     }
 
+    Ok(overlapping_it
+        .into_iter()
+        .flatten()
+        .chain(non_overlapping_it.into_iter().flatten()))
+}
+
+impl PyAhoCorasick {
     /// Create mapping from byte index to Unicode code point (character) index
     /// in the haystack.
     fn get_byte_to_code_point(&self, haystack: &str) -> Vec<usize> {
@@ -233,17 +243,18 @@ impl PyAhoCorasick {
     ) -> PyResult<Vec<(u64, usize, usize)>> {
         let byte_to_code_point = self_.get_byte_to_code_point(haystack);
         let py = self_.py();
-        let matches = self_.get_matches(py, haystack, overlapping)?;
-        Ok(matches
-            .into_iter()
-            .map(|m| {
-                (
-                    m.pattern().as_u64(),
-                    byte_to_code_point[m.start()],
-                    byte_to_code_point[m.end()],
-                )
-            })
-            .collect())
+        let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
+        py.allow_threads(|| {
+            Ok(matches
+                .map(|m| {
+                    (
+                        m.pattern().as_u64(),
+                        byte_to_code_point[m.start()],
+                        byte_to_code_point[m.end()],
+                    )
+                })
+                .collect())
+        })
     }
 
     /// Return matches as list of patterns (i.e. strings). If ``overlapping`` is
@@ -255,7 +266,8 @@ impl PyAhoCorasick {
         overlapping: bool,
     ) -> PyResult<Py<PyList>> {
         let py = self_.py();
-        let matches = self_.get_matches(py, haystack, overlapping)?.into_iter();
+        let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
+        let matches = py.allow_threads(|| matches.collect::<Vec<_>>().into_iter());
         let result = if let Some(ref patterns) = self_.patterns {
             PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
         } else {
@@ -268,11 +280,163 @@ impl PyAhoCorasick {
     }
 }
 
+// A wrapper around PyBuffer that can be passed directly to AhoCorasickBuilder
+struct PyBufferBytes<'a> {
+    py: Python<'a>,
+    buffer: PyBuffer<u8>,
+}
+
+impl<'a> TryFrom<&'a PyAny> for PyBufferBytes<'a> {
+    type Error = PyErr;
+
+    // Get a PyBufferBytes from a Python object
+    fn try_from(obj: &'a PyAny) -> PyResult<Self> {
+        let buffer = PyBuffer::<u8>::get(obj).map_err(PyErr::from)?;
+
+        if buffer.dimensions() > 1 {
+            return Err(PyTypeError::new_err(
+                "Only one-dimensional sequences are supported",
+            ));
+        }
+
+        // Make sure we can get a slice from the buffer
+        let py = obj.py();
+        let _ = buffer
+            .as_slice(py)
+            .ok_or_else(|| PyTypeError::new_err("Must be a contiguous sequence of bytes"))?;
+
+        Ok(PyBufferBytes { py, buffer })
+    }
+}
+
+impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
+    fn as_ref(&self) -> &[u8] {
+        // This already succeeded when we created PyBufferBytes, so just expect()
+        let slice = self
+            .buffer
+            .as_slice(self.py)
+            .expect("Failed to get a slice from a valid buffer?");
+
+        const _: () = assert!(
+            std::mem::size_of::<ReadOnlyCell<u8>>() == std::mem::size_of::<u8>(),
+            "ReadOnlyCell<u8> has a different size than u8"
+        );
+
+        // Safety: the slice is &[ReadOnlyCell<u8>] which has the same memory
+        // representation as &[u8] due to it being a #[repr(transparent)] newtype
+        // around the standard library UnsafeCell<u8>, which the documentation
+        // claims has the same representation as the underlying type.
+        //
+        // However, holding this reference while Python code is executing might
+        // result in the buffer getting mutated from under us, which is a violation
+        // of the &[u8] invariants (and having the .readonly() flag set on the
+        // PyBuffer unfortunately doesn't actually guarantee immutability).
+        //
+        // Because &[u8] is `Ungil`, we can't prevent a release of the GIL while
+        // this reference is being held (though even if it wasn't `Ungil`, we
+        // wouldn't be able to prevent calling back into Python while holding
+        // this reference, which might also result in a mutation).
+        //
+        // This effectively means that it's only safe to hold onto the reference
+        // returned from this function as long as we don't release the GIL and
+        // don't call back into Python code while the reference is alive.
+        // See also https://github.com/PyO3/pyo3/issues/2824
+        unsafe { std::mem::transmute(slice) }
+    }
+}
+
+/// Search for multiple pattern bytes against a single bytes haystack.
+///
+/// Takes three arguments:
+///
+/// * ``patterns``: A list of bytes, the patterns to match against. Empty
+///   patterns are not supported and will result in a ``ValueError`` exception
+///   being raised.
+/// * ``matchkind``: Defaults to ``"MATCHKING_STANDARD"``.
+/// * ``implementation``: The underlying type of automaton to use for Aho-Corasick.
+#[pyclass(name = "BytesAhoCorasick")]
+struct PyBytesAhoCorasick {
+    ac_impl: AhoCorasick,
+}
+
+/// Methods for PyBytesAhoCorasick.
+#[pymethods]
+impl PyBytesAhoCorasick {
+    /// __new__() implementation.
+    #[new]
+    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, implementation = None))]
+    fn new(
+        _py: Python,
+        patterns: &PyAny,
+        matchkind: PyMatchKind,
+        implementation: Option<Implementation>,
+    ) -> PyResult<Self> {
+        // If set, this means we had an error while parsing byte buffers from `patterns`
+        let patterns_error: Cell<Option<PyErr>> = Cell::new(None);
+
+        // Convert the `patterns` iterable into an Iterator over PyBufferBytes
+        let patterns_iter =
+            patterns
+                .iter()?
+                .map_while(|pat| match pat.and_then(|i| PyBufferBytes::try_from(i)) {
+                    Ok(pat) => {
+                        if pat.as_ref().is_empty() {
+                            patterns_error.set(Some(PyValueError::new_err(
+                                "You passed in an empty pattern",
+                            )));
+                            None
+                        } else {
+                            Some(pat)
+                        }
+                    }
+                    Err(e) => {
+                        patterns_error.set(Some(e));
+                        None
+                    }
+                });
+
+        let ac_impl = AhoCorasickBuilder::new()
+            .kind(implementation.map(|i| i.into()))
+            .match_kind(matchkind.into())
+            .build(patterns_iter)
+            // TODO make sure this error is meaningful to Python users
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+        if let Some(err) = patterns_error.take() {
+            return Err(err);
+        }
+
+        Ok(Self { ac_impl })
+    }
+
+    /// Return matches as tuple of (index_into_patterns,
+    /// start_index_in_haystack, end_index_in_haystack). If ``overlapping`` is
+    /// ``False`` (the default), don't include overlapping results.
+    #[pyo3(signature = (haystack, overlapping = false))]
+    fn find_matches_as_indexes(
+        self_: PyRef<Self>,
+        haystack: &PyAny,
+        overlapping: bool,
+    ) -> PyResult<Vec<(u64, usize, usize)>> {
+        let haystack = PyBufferBytes::try_from(haystack)?;
+        let matches = get_matches(&self_.ac_impl, haystack.as_ref(), overlapping)?;
+
+        // Note: we must collect here and not release the GIL or return an iterator
+        // from this function due to the safety caveat in the implementation of
+        // AsRef<[u8]> for PyBufferBytes, which is relevant here since the matches
+        // iterator is holding an AsRef reference on the haystack.
+        Ok(matches
+            .map(|m| (m.pattern().as_u64(), m.start(), m.end()))
+            .collect())
+    }
+}
+
 /// The main Python module.
 #[pymodule]
 fn ahocorasick_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyMatchKind>()?;
     m.add_class::<Implementation>()?;
     m.add_class::<PyAhoCorasick>()?;
+    m.add_class::<PyBytesAhoCorasick>()?;
     Ok(())
 }

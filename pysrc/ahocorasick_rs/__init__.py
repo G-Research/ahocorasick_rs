@@ -1,6 +1,7 @@
 # Expose the Rust code:
 from .ahocorasick_rs import (
     AhoCorasick,
+    BytesAhoCorasick,
     MatchKind,
     Implementation,
 )
@@ -12,6 +13,7 @@ MATCHKIND_LEFTMOST_LONGEST = MatchKind.LeftmostLongest
 
 __all__ = [
     "AhoCorasick",
+    "BytesAhoCorasick",
     "MatchKind",
     "Implementation",
     # Deprecated:
