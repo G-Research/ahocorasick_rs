@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional, Iterable
 from collections.abc import Buffer
 
@@ -25,7 +27,6 @@ class AhoCorasick:
     def find_matches_as_strings(
         self, haystack: str, overlapping: bool = False
     ) -> list[str]: ...
-
 
 class BytesAhoCorasick:
     def __init__(
