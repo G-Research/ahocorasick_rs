@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from typing import Optional, Iterable
-from collections.abc import Buffer
+import sys
+
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    from typing_extensions import Buffer
 
 class Implementation:
     NoncontiguousNFA: Implementation
