@@ -21,7 +21,7 @@ jobs:
     name: "${{ matrix.os }}: Python ${{ matrix.python-version }}"
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         os: ["ubuntu-20.04", "macos-11", "windows-latest"]
 
     env:
@@ -36,9 +36,7 @@ jobs:
       - uses: "actions/setup-python@v4"
         with:
           python-version: "${{ matrix.python-version }}"
-      - uses: "actions-rs/toolchain@v1"
-        with:
-          toolchain: stable
+      - uses: "dtolnay/rust-toolchain@stable"
       - name: "Compile"
         run: |
           pip install -r requirements-dev.txt
@@ -81,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
