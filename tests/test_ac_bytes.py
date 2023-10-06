@@ -94,11 +94,11 @@ def test_bad_iterators() -> None:
         BytesAhoCorasick(None)  # type: ignore
 
     with pytest.raises(TypeError):
-        BytesAhoCorasick([b"x", 12])
+        BytesAhoCorasick([b"x", 12])  # type: ignore[list-item]
 
     # str doesn't implement the buffer API and can't be converted to bytes
     with pytest.raises(TypeError):
-        BytesAhoCorasick([b"x", "y"])
+        BytesAhoCorasick([b"x", "y"])  # type: ignore[list-item]
 
 
 @given(
