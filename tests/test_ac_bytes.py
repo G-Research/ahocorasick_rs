@@ -7,7 +7,7 @@ from typing import Optional
 import pytest
 
 from hypothesis import strategies as st
-from hypothesis import given, assume
+from hypothesis import given
 
 from ahocorasick_rs import (
     BytesAhoCorasick,
@@ -123,15 +123,13 @@ def test_random_bytes_extensive(prefix: bytes, pattern: bytes, suffix: bytes) ->
     Random bytes patterns still give correct results for
     find_matches_as_indexes(), with property-testing.
     """
-    assume(pattern not in prefix)
-    assume(pattern not in suffix)
     haystack = prefix + pattern + suffix
     ac = BytesAhoCorasick([pattern])
 
     index_matches = ac.find_matches_as_indexes(haystack)
-    expected = [pattern]
-    assert [i for (i, _, _) in index_matches] == [0]
-    assert [haystack[s:e] for (_, s, e) in index_matches] == expected
+    assert {i for (i, _, _) in index_matches} == {0}
+    # Occasionally might get overlap between haystack and prefix/suffix...
+    assert {haystack[s:e] for (_, s, e) in index_matches} == {pattern}
 
 
 @pytest.mark.parametrize("bad_patterns", [[b""], [b"", b"xx"], [b"xx", b""]])
