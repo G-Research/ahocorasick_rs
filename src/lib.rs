@@ -368,7 +368,7 @@ impl PyBytesAhoCorasick {
         let patterns_iter =
             patterns
                 .iter()?
-                .map_while(|pat| match pat.and_then(|i| PyBufferBytes::try_from(i)) {
+                .map_while(|pat| match pat.and_then(PyBufferBytes::try_from) {
                     Ok(pat) => {
                         if pat.as_ref().is_empty() {
                             patterns_error.set(Some(PyValueError::new_err(
