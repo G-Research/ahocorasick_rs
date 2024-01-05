@@ -7,7 +7,7 @@ from typing import Optional
 import pytest
 
 from hypothesis import strategies as st
-from hypothesis import given, assume
+from hypothesis import given
 
 from ahocorasick_rs import (
     AhoCorasick,
@@ -140,8 +140,6 @@ def test_unicode_extensive(
     Non-ASCII unicode patterns still give correct results for
     find_matches_as_indexes(), with property-testing.
     """
-    assume(pattern not in prefix)
-    assume(pattern not in suffix)
     haystack = prefix + pattern + suffix
     if store_patterns is None:
         ac = AhoCorasick([pattern])
@@ -149,10 +147,11 @@ def test_unicode_extensive(
         ac = AhoCorasick([pattern], store_patterns=store_patterns)
 
     index_matches = ac.find_matches_as_indexes(haystack)
-    expected = [pattern]
-    assert [i for (i, _, _) in index_matches] == [0]
-    assert [haystack[s:e] for (_, s, e) in index_matches] == expected
-    assert ac.find_matches_as_strings(haystack) == [pattern]
+    expected = {pattern}
+    assert {i for (i, _, _) in index_matches} == {0}
+    # Occasionally might get an overlap between haystack and preffix/suffix...
+    assert {haystack[s:e] for (_, s, e) in index_matches} == expected
+    assert set(ac.find_matches_as_strings(haystack)) == expected
 
 
 @pytest.mark.parametrize("bad_patterns", [[""], ["", "xx"], ["xx", ""]])
