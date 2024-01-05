@@ -111,7 +111,7 @@ def test_construction_extensive(patterns: list[bytes]) -> None:
     """
     patterns = [b"@%b@" % p for p in patterns]
     ac = BytesAhoCorasick(patterns)
-    for i, p in enumerate(patterns):
+    for p in patterns:
         assert [p[s:e] for (_, s, e) in ac.find_matches_as_indexes(p)] == [p]
 
 
