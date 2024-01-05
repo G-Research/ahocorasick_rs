@@ -1,4 +1,12 @@
+from __future__ import annotations
+
 from typing import Optional, Iterable
+import sys
+
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    from typing_extensions import Buffer
 
 class Implementation:
     NoncontiguousNFA: Implementation
@@ -24,3 +32,14 @@ class AhoCorasick:
     def find_matches_as_strings(
         self, haystack: str, overlapping: bool = False
     ) -> list[str]: ...
+
+class BytesAhoCorasick:
+    def __init__(
+        self,
+        patterns: Iterable[Buffer],
+        matchkind: MatchKind = MatchKind.Standard,
+        implementation: Optional[Implementation] = None,
+    ) -> None: ...
+    def find_matches_as_indexes(
+        self, haystack: Buffer, overlapping: bool = False
+    ) -> list[tuple[int, int, int]]: ...

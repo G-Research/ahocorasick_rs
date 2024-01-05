@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.0
+
+* Added support for searching `bytes`, `bytearray`, `memoryview`, and similar objects using the `BytesAhoCorasick` class.
+
 ## 0.20.0
 
 * Added support for Python 3.12.

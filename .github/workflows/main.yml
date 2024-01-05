@@ -43,9 +43,9 @@ jobs:
           pip install .
       - name: "Tests"
         run: |
-          flake8 tests
-          mypy --strict tests  # indirect type annotation checking
-          black --check tests
+          flake8 pysrc tests
+          mypy --strict pysrc tests
+          black --check pysrc tests
           pytest tests
       - name: "Enable universal2 on Python >= 3.9 on macOS"
         if: ${{ startsWith(matrix.os, 'macos') && matrix.python-version != '3.8' }}
