@@ -267,7 +267,7 @@ impl PyAhoCorasick {
     }
 }
 
-// A wrapper around PyBuffer that can be passed directly to AhoCorasickBuilder
+/// A wrapper around PyBuffer that can be passed directly to AhoCorasickBuilder.
 struct PyBufferBytes<'a> {
     py: Python<'a>,
     buffer: PyBuffer<u8>,
@@ -332,13 +332,16 @@ impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
     }
 }
 
-/// Search for multiple pattern bytes against a single bytes haystack.
+/// Search for multiple pattern bytes against a single bytes haystack. In
+/// addition to ``bytes``, you can use other objects that support the Python
+/// buffer API, like ``memoryview`` and ``bytearray``.
 ///
 /// Takes three arguments:
 ///
 /// * ``patterns``: A list of bytes, the patterns to match against. Empty
 ///   patterns are not supported and will result in a ``ValueError`` exception
-///   being raised.
+///   being raised. No references are kept to the patterns once construction is
+///   finished.
 /// * ``matchkind``: Defaults to ``"MATCHKING_STANDARD"``.
 /// * ``implementation``: The underlying type of automaton to use for Aho-Corasick.
 #[pyclass(name = "BytesAhoCorasick")]
