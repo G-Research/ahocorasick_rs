@@ -14,14 +14,16 @@ Found any problems or have any questions? [File an issue on the GitHub project](
 
 ## Quickstart <a name="quickstart"></a>
 
-The `ahocorasick_rs` library allows you to search for multiple strings ("patterns") within a haystack.
+The `ahocorasick_rs` library allows you to search for multiple strings ("patterns") within a haystack, or alternatively search multiple bytes.
 For example, let's install the library:
 
 ```shell-session
 $ pip install ahocorasick-rs
 ```
 
-Then, we can construct a `AhoCorasick` object:
+### Searching strings
+
+We can construct a `AhoCorasick` object:
 
 ```python
 >>> import ahocorasick_rs
@@ -58,11 +60,29 @@ You can construct a `AhoCorasick` object from any iterable (including generators
 ['hello', 'world', 'hello']
 ```
 
+### Searching `bytes` and other similar objects
+
+You can also search `bytes`, `bytearray`, `memoryview`, and other objects supporting the Python buffer API.
+
+```python
+>>> patterns = [b"hello", b"world"]
+>>> ac = ahocorasick_rs.BytesAhoCorasick(patterns)
+>>> haystack = b"hello world"
+>>> ac.find_matches_as_indexes(b"hello world")
+[(0, 0, 5), (1, 6, 11)]
+>>> patterns[0], patterns[1]
+(b'hello', b'world')
+>>> haystack[0:5], haystack[6:11]
+(b'hello', b'world')
+```
+
+The `find_matches_as_strings()` API is not supported by `BytesAhoCorasick`.
+
 ## Choosing the matching algorithm <a name="matching"></a>
 
 ### Match kind
 
-There are three ways you can configure matching in cases where multiple patterns overlap.
+There are three ways you can configure matching in cases where multiple patterns overlap, supported by both `AhoCorasick` and `BytesAhoCorasick` objects.
 For a more in-depth explanation, see the [underlying Rust library's documentation of matching](https://docs.rs/aho-corasick/latest/aho_corasick/enum.MatchKind.html).
 
 Assume we have this starting point:
@@ -127,7 +147,8 @@ This returns the leftmost-in-the-haystack matching pattern that is longest:
 
 ### Overlapping matches
 
-You can get all overlapping matches, instead of just one of them, but only if you stick to the default matchkind, `MatchKind.Standard`:
+You can get all overlapping matches, instead of just one of them, but only if you stick to the default matchkind, `MatchKind.Standard`.
+Again, this is supported by both `AhoCorasick` and `BytesAhoCorasick`.
 
 ```python
 >>> from ahocorasick_rs import AhoCorasick
@@ -139,7 +160,7 @@ You can get all overlapping matches, instead of just one of them, but only if yo
 
 ## Additional configuration: speed and memory usage tradeoffs <a name="configuration2"></a>
 
-### Algorithm implementations: trading construction speed, memory, and performance
+### Algorithm implementations: trading construction speed, memory, and performance (`AhoCorasick` and `BytesAhoCorasick`)
 
 You can choose the type of underlying automaton to use, with different performance tradeoffs.
 The short version: if you want maximum matching speed, and you don't have too many patterns, try the `Implementation.DFA` implementation and see if it helps.
@@ -157,7 +178,7 @@ The underlying Rust library supports [four choices](https://docs.rs/aho-corasick
 >>> ac = AhoCorasick(["disco", "disc"], implementation=Implementation.DFA)
 ```
 
-### Trading memory for speed
+### Trading memory for speed (`AhoCorasick` only)
 
 If you use ``find_matches_as_strings()``, there are two ways strings can be constructed: from the haystack, or by caching the patterns on the object.
 The former takes more work, the latter uses more memory if the patterns would otherwise have been garbage-collected.
@@ -171,7 +192,8 @@ You can control the behavior by using the `store_patterns` keyword argument to `
 
 ## Implementation details <a name="implementation"></a>
 
-* Matching releases the GIL, to enable concurrency.
+* Matching on strings releases the GIL, to enable concurrency.
+  Matching on bytes does not currently release the GIL, but see https://github.com/G-Research/ahocorasick_rs/issues/94 for a case where it could.
 * Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
 
 ## Benchmarks <a name="benchmarks"></a>
