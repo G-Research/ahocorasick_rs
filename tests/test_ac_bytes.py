@@ -7,7 +7,7 @@ from typing import Optional
 import pytest
 
 from hypothesis import strategies as st
-from hypothesis import given, assume, reproduce_failure
+from hypothesis import given, assume
 
 from ahocorasick_rs import (
     BytesAhoCorasick,
