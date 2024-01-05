@@ -94,7 +94,7 @@ def test_construction_extensive(
     Exercise the construction code paths, ensuring we end up using all
     patterns.
     """
-    patterns = [f"@{p}@" for p in patterns]
+    patterns = [f"{p}_{i}_" for (i, p) in enumerate(patterns)]
     ac = AhoCorasick(patterns, store_patterns=store_patterns)
     for p in patterns:
         assert ac.find_matches_as_strings(p) == [p]

@@ -7,7 +7,7 @@ from typing import Optional
 import pytest
 
 from hypothesis import strategies as st
-from hypothesis import given, assume
+from hypothesis import given, assume, reproduce_failure
 
 from ahocorasick_rs import (
     BytesAhoCorasick,
@@ -109,10 +109,12 @@ def test_construction_extensive(patterns: list[bytes]) -> None:
     Exercise the construction code paths, ensuring we end up using all
     patterns.
     """
-    patterns = [b"@%b@" % p for p in patterns]
+    patterns = [b"%b_%i_" % (p, i) for (i, p) in enumerate(patterns)]
     ac = BytesAhoCorasick(patterns)
-    for p in patterns:
-        assert [p[s:e] for (_, s, e) in ac.find_matches_as_indexes(p)] == [p]
+    for haystack in patterns:
+        assert [
+            haystack[s:e] for (_, s, e) in ac.find_matches_as_indexes(haystack)
+        ] == [haystack]
 
 
 @given(st.binary(), st.binary(min_size=1), st.binary())
