@@ -20,9 +20,9 @@ install-dev-dependencies:
 setup: venv install-dev-dependencies
 
 lint:
-	flake8 tests/
-	black --check tests/
-	mypy --strict tests
+	flake8 pysrc tests/
+	black --check pysrc tests/
+	mypy --strict pysrc tests
 
 test:
 	pytest tests/
