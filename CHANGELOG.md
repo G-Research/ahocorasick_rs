@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.0
+
+* Added support for Python 3.12.
+
 ## 0.19.0
 
 * If an empty string is passed in as a pattern, `AhoCorasick()` will now raise a `ValueError`.
