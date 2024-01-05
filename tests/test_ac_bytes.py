@@ -1,4 +1,4 @@
-"""Tests for ahocorasick_rs."""
+"""Tests for ahocorasick_rs's bytes support."""
 
 from __future__ import annotations
 
@@ -115,33 +115,10 @@ def test_construction_extensive(patterns: list[bytes]) -> None:
         assert [p[s:e] for (_, s, e) in ac.find_matches_as_indexes(p)] == [p]
 
 
-@pytest.mark.parametrize(
-    "implementation",
-    [
-        None,
-        Implementation.NoncontiguousNFA,
-        Implementation.ContiguousNFA,
-        Implementation.DFA,
-    ],
-)
-def test_unicode(implementation: Optional[Implementation]) -> None:
-    """
-    Non-ASCII unicode patterns still give correct results for
-    find_matches_as_indexes().
-    """
-    haystack = "hello, world ☃fishá l🤦l".encode("utf-8")
-    patterns = [p.encode("utf-8") for p in ("d ☃f", "há", "l🤦l")]
-    ac = BytesAhoCorasick(patterns, implementation=implementation)
-    index_matches = ac.find_matches_as_indexes(haystack)
-    expected = list(patterns)
-    assert [patterns[i] for (i, _, _) in index_matches] == expected
-    assert [haystack[s:e] for (_, s, e) in index_matches] == expected
-
-
 @given(st.binary(), st.binary(min_size=1), st.binary())
-def test_unicode_extensive(prefix: bytes, pattern: bytes, suffix: bytes) -> None:
+def test_random_bytes_extensive(prefix: bytes, pattern: bytes, suffix: bytes) -> None:
     """
-    Non-ASCII unicode patterns still give correct results for
+    Random bytes patterns still give correct results for
     find_matches_as_indexes(), with property-testing.
     """
     assume(pattern not in prefix)
@@ -167,7 +144,7 @@ def test_empty_patterns_are_not_legal(bad_patterns: list[bytes]) -> None:
 
 
 @given(st.binary(min_size=1), st.binary())
-def test_unicode_totally_random(pattern: bytes, haystack: bytes) -> None:
+def test_bytes_totally_random(pattern: bytes, haystack: bytes) -> None:
     """
     Catch more edge cases of patterns and haystacks.
     """
