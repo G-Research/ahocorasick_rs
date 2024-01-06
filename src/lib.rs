@@ -8,7 +8,7 @@ use pyo3::{
     buffer::{PyBuffer, ReadOnlyCell},
     exceptions::{PyTypeError, PyValueError},
     prelude::*,
-    types::{PyList, PyUnicode},
+    types::{PyBytes, PyList, PyUnicode},
 };
 
 /// Search for multiple pattern strings against a single haystack string.
@@ -408,16 +408,22 @@ impl PyBytesAhoCorasick {
         haystack: &PyAny,
         overlapping: bool,
     ) -> PyResult<Vec<(u64, usize, usize)>> {
-        let haystack = PyBufferBytes::try_from(haystack)?;
-        let matches = get_matches(&self_.ac_impl, haystack.as_ref(), overlapping)?;
+        let haystack_buffer = PyBufferBytes::try_from(haystack)?;
+        let matches = get_matches(&self_.ac_impl, haystack_buffer.as_ref(), overlapping)?
+            .map(|m| (m.pattern().as_u64(), m.start(), m.end()));
 
-        // Note: we must collect here and not release the GIL or return an iterator
-        // from this function due to the safety caveat in the implementation of
-        // AsRef<[u8]> for PyBufferBytes, which is relevant here since the matches
-        // iterator is holding an AsRef reference on the haystack.
-        Ok(matches
-            .map(|m| (m.pattern().as_u64(), m.start(), m.end()))
-            .collect())
+        if !haystack.is_instance_of::<PyBytes>() {
+            // Note: we must collect here and not release the GIL or return an iterator
+            // from this function due to the safety caveat in the implementation of
+            // AsRef<[u8]> for PyBufferBytes, which is relevant here since the matches
+            // iterator is holding an AsRef reference to the haystack.
+            Ok(matches.collect())
+        } else {
+            // However, if the haystack is a PyBytes, it's guaranteed to be immutable,
+            // so the safety caveat doesn't apply, and we can safely release the GIL
+            // while the matches iterator is holding a reference to the haystack.
+            haystack.py().allow_threads(|| Ok(matches.collect()))
+        }
     }
 }
 

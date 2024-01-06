@@ -193,7 +193,7 @@ You can control the behavior by using the `store_patterns` keyword argument to `
 ## Implementation details <a name="implementation"></a>
 
 * Matching on strings releases the GIL, to enable concurrency.
-  Matching on bytes does not currently release the GIL, but see https://github.com/G-Research/ahocorasick_rs/issues/94 for a case where it could.
+  Matching on bytes does not currently release the GIL for memory-safety reasons, unless the haystack type is `bytes`.
 * Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
 
 ## Benchmarks <a name="benchmarks"></a>
