@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.22.0
+
+* The GIL is released when using a `bytes` haystack with `BytesAhoCorasick`. Thanks to Isaac Garzón.
+
 ## 0.21.0
 
-* Added support for searching `bytes`, `bytearray`, `memoryview`, and similar objects using the `BytesAhoCorasick` class.
+* Added support for searching `bytes`, `bytearray`, `memoryview`, and similar objects using the `BytesAhoCorasick` class. Thanks to Isaac Garzón.
 
 ## 0.20.0
 
