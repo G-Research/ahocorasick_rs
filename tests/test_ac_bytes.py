@@ -71,6 +71,35 @@ def test_different_byte_objects_matching(
     assert [haystack[s:e] for (_, s, e) in index_matches] == expected
 
 
+@pytest.mark.parametrize(
+    "implementation",
+    [
+        None,
+        Implementation.NoncontiguousNFA,
+        Implementation.ContiguousNFA,
+        Implementation.DFA,
+    ],
+)
+@pytest.mark.parametrize("haystack_type", [bytes, bytearray, memoryview])
+def test_different_byte_haystacks_matching(
+    implementation: Optional[Implementation],
+    haystack_type: type[bytes | bytearray | memoryview],
+) -> None:
+    """
+    find_matches_as_indexes() returns matching patterns in the given byte string.
+    """
+    haystack = haystack_type(b"hello, world, hello again")
+    patterns = [b"hello", b"world"]
+    ac = BytesAhoCorasick(patterns, implementation=implementation)
+
+    expected = [b"hello", b"world", b"hello"]
+
+    # find_matches_as_indexes()
+    index_matches = ac.find_matches_as_indexes(haystack)
+    assert [patterns[i] for (i, _, _) in index_matches] == expected
+    assert [haystack[s:e] for (_, s, e) in index_matches] == expected
+
+
 def test_iterator_of_patterns() -> None:
     """
     It's possible to construct ``BytesAhoCorasick()`` with an iterator.
