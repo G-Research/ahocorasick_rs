@@ -16,7 +16,7 @@ crate-type = ["cdylib"]
 [dependencies]
 aho-corasick = "1.0"
 itertools = "0.11.0"
-pyo3 = "0.20"
+pyo3 = { version = "0.21", features = [] }
 
 [features]
 # The extension-module song and dance is explained here:
