@@ -8,7 +8,7 @@ use pyo3::{
     buffer::{PyBuffer, ReadOnlyCell},
     exceptions::{PyTypeError, PyValueError},
     prelude::*,
-    types::{PyBytes, PyList, PyUnicode},
+    types::{PyBytes, PyList, PyString},
 };
 
 /// Search for multiple pattern strings against a single haystack string.
@@ -28,7 +28,7 @@ use pyo3::{
 #[pyclass(name = "AhoCorasick")]
 struct PyAhoCorasick {
     ac_impl: AhoCorasick,
-    patterns: Option<Vec<Py<PyUnicode>>>,
+    patterns: Option<Vec<Py<PyString>>>,
 }
 
 /// Convert a MatchError to something meaningful to Python users
@@ -134,7 +134,7 @@ impl PyAhoCorasick {
     #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = None))]
     fn new(
         py: Python,
-        patterns: &PyAny,
+        patterns: Bound<'_, PyAny>,
         matchkind: PyMatchKind,
         store_patterns: Option<bool>,
         implementation: Option<Implementation>,
@@ -142,29 +142,29 @@ impl PyAhoCorasick {
         // If set, this means we had an error while parsing the strings from the patterns iterable.
         let patterns_error: Cell<Option<PyErr>> = Cell::new(None);
 
-        // Convert the `patterns` iterable into an Iterator over &PyUnicode:
+        // Convert the `patterns` iterable into an Iterator over Py<PyString>:
         let mut patterns_iter = patterns.iter()?.map_while(|pat| {
-            pat.and_then(|i| i.downcast::<PyUnicode>().map_err(PyErr::from))
+            pat.and_then(|i| i.downcast_into::<PyString>().map_err(PyErr::from).map(|i|i.into_py(py)))
                 .map_or_else(
                     |e| {
                         patterns_error.set(Some(e));
                         None
                     },
-                    Some,
+                    Some::<Py<PyString>>,
                 )
         });
 
         // If store_patterns is None (the default), use a heuristic to decide
         // whether to store patterns.
-        let mut patterns: Vec<Py<PyUnicode>> = vec![];
+        let mut patterns: Vec<Py<PyString>> = vec![];
         let store_patterns = store_patterns
             .unwrap_or_else(|| {
                 let mut total = 0;
                 let mut store_patterns = true;
                 for s in patterns_iter.by_ref() {
                     // Highly unlikely that strings will fail to return length, so just expect().
-                    total += s.len().expect("String doesn't have length?");
-                    patterns.push(s.into());
+                    total += s.bind(py).len().expect("String doesn't have length?");
+                    patterns.push(s);
                     if total > 4096 {
                         store_patterns = false;
                         break;
@@ -175,7 +175,7 @@ impl PyAhoCorasick {
 
         if store_patterns {
             for s in patterns_iter.by_ref() {
-                patterns.push(s.into());
+                patterns.push(s);
             }
         }
 
@@ -183,9 +183,8 @@ impl PyAhoCorasick {
             .kind(implementation.map(|i| i.into()))
             .match_kind(matchkind.into())
             .build(
-                patterns
-                    .iter()
-                    .map(|i| i.as_ref(py))
+                patterns.clone()
+                    .into_iter()
                     .chain(patterns_iter)
                     .chunks(10 * 1024)
                     .into_iter()
@@ -193,7 +192,7 @@ impl PyAhoCorasick {
                         // Release the GIL in case some other thread wants to do work:
                         py.allow_threads(|| ());
 
-                        chunk.map(|s| s.extract::<String>().ok())
+                        chunk.map(|s| s.extract::<String>(py).ok())
                     })
                     .map_while(|s| {
                         s.and_then(|s| {
@@ -256,11 +255,11 @@ impl PyAhoCorasick {
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
         let matches = py.allow_threads(|| matches.collect::<Vec<_>>().into_iter());
         let result = if let Some(ref patterns) = self_.patterns {
-            PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
+            PyList::new_bound(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
         } else {
-            PyList::new(
+            PyList::new_bound(
                 py,
-                matches.map(|m| PyUnicode::new(py, &haystack[m.start()..m.end()])),
+                matches.map(|m| PyString::new_bound(py, &haystack[m.start()..m.end()])),
             )
         };
         Ok(result.into())
@@ -268,17 +267,17 @@ impl PyAhoCorasick {
 }
 
 /// A wrapper around PyBuffer that can be passed directly to AhoCorasickBuilder.
-struct PyBufferBytes<'a> {
-    py: Python<'a>,
+struct PyBufferBytes<'py> {
+    py: Python<'py>,
     buffer: PyBuffer<u8>,
 }
 
-impl<'a> TryFrom<&'a PyAny> for PyBufferBytes<'a> {
+impl<'py> TryFrom<Bound<'py, PyAny>> for PyBufferBytes<'py> {
     type Error = PyErr;
 
     // Get a PyBufferBytes from a Python object
-    fn try_from(obj: &'a PyAny) -> PyResult<Self> {
-        let buffer = PyBuffer::<u8>::get(obj).map_err(PyErr::from)?;
+    fn try_from(obj: Bound<'py, PyAny>) -> PyResult<Self> {
+        let buffer = PyBuffer::<u8>::get_bound(&obj).map_err(PyErr::from)?;
 
         if buffer.dimensions() > 1 {
             return Err(PyTypeError::new_err(
@@ -357,7 +356,7 @@ impl PyBytesAhoCorasick {
     #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, implementation = None))]
     fn new(
         _py: Python,
-        patterns: &PyAny,
+        patterns: Bound<'_, PyAny>,
         matchkind: PyMatchKind,
         implementation: Option<Implementation>,
     ) -> PyResult<Self> {
@@ -405,14 +404,16 @@ impl PyBytesAhoCorasick {
     #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_indexes(
         self_: PyRef<Self>,
-        haystack: &PyAny,
+        haystack: Bound<'_, PyAny>,
         overlapping: bool,
     ) -> PyResult<Vec<(u64, usize, usize)>> {
+        let is_bytes = haystack.is_instance_of::<PyBytes>();
+        let py = haystack.py();
         let haystack_buffer = PyBufferBytes::try_from(haystack)?;
         let matches = get_matches(&self_.ac_impl, haystack_buffer.as_ref(), overlapping)?
             .map(|m| (m.pattern().as_u64(), m.start(), m.end()));
 
-        if !haystack.is_instance_of::<PyBytes>() {
+        if !is_bytes {
             // Note: we must collect here and not release the GIL or return an iterator
             // from this function due to the safety caveat in the implementation of
             // AsRef<[u8]> for PyBufferBytes, which is relevant here since the matches
@@ -422,14 +423,14 @@ impl PyBytesAhoCorasick {
             // However, if the haystack is a PyBytes, it's guaranteed to be immutable,
             // so the safety caveat doesn't apply, and we can safely release the GIL
             // while the matches iterator is holding a reference to the haystack.
-            haystack.py().allow_threads(|| Ok(matches.collect()))
+            py.allow_threads(|| Ok(matches.collect()))
         }
     }
 }
 
 /// The main Python module.
 #[pymodule]
-fn ahocorasick_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn ahocorasick_rs(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMatchKind>()?;
     m.add_class::<Implementation>()?;
     m.add_class::<PyAhoCorasick>()?;
