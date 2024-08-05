@@ -1,5 +1,10 @@
 # Changelog
 
+# 0.22.1
+
+* Added support for Python 3.13.
+* Dropped support for Python 3.8.
+
 ## 0.22.0
 
 * The GIL is released when using a `bytes` haystack with `BytesAhoCorasick`. Thanks to Isaac Garzón.
