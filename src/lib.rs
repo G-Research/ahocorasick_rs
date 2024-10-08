@@ -88,8 +88,8 @@ impl PyAhoCorasick {
 }
 
 /// Python equivalent of MatchKind.
-#[derive(Clone, Copy, Debug)]
-#[pyclass(name = "MatchKind")]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[pyclass(eq, name = "MatchKind")]
 enum PyMatchKind {
     Standard,
     LeftmostFirst,
@@ -107,9 +107,9 @@ impl From<PyMatchKind> for MatchKind {
 }
 
 /// Python equivalent of AhoCorasickKind.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
-#[pyclass]
+#[pyclass(eq)]
 enum Implementation {
     NoncontiguousNFA,
     ContiguousNFA,
