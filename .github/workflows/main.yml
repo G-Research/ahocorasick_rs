@@ -48,7 +48,7 @@ jobs:
           black --check pysrc tests
           pytest tests
       - name: "Enable universal2 on Python >= 3.9 on macOS"
-        if: ${{ startsWith(matrix.os, 'macos')
+        if: ${{ startsWith(matrix.os, 'macos') }}
         run: |
           rustup target add aarch64-apple-darwin
           echo "MATURIN_EXTRA=--target=universal2-apple-darwin" >> $GITHUB_ENV
