@@ -60,19 +60,20 @@ jobs:
           manylinux: auto
           args: --release --out target/wheels/ -i python${{ matrix.python-version }} ${{ env.MATURIN_EXTRA }}
       - name: "sdist"
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}  # MUST MATCH BELOW
         run: |
           pip install maturin==${{ env.MATURIN_VERSION }}
           maturin sdist
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: Wheels
+          name: "Wheels-${{ matrix.python-version}}-${{ matrix.os }}"
           path: target/wheels/*.whl
       - name: Archive production artifacts 2
-        uses: actions/upload-artifact@v3
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}  # MUST MATCH ABOVE
+        uses: actions/upload-artifact@v4
         with:
-          name: Wheels
+          name: "Wheels-tarball"
           path: target/wheels/ahocorasick*.tar.gz
 
   cross:
@@ -93,9 +94,9 @@ jobs:
           manylinux: auto
           args: --release --out target/wheels/ -i python${{ matrix.python-version }}
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: Wheels
+          name: "Wheels-${{ matrix.python-version}}-arm64-cross"
           path: target/wheels/*.whl
 
   publish:
@@ -106,9 +107,10 @@ jobs:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: Wheels
+          pattern: Wheels*
+          merge-multiple: true
           path: dist/
       - run: |
           # Remove badly named wheels:
