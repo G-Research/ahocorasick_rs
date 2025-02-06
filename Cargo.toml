@@ -1,6 +1,6 @@
 [package]
 name = "ahocorasick_rs"
-version = "0.22.1"
+version = "0.22.2"
 edition = "2021"
 authors = ["G-Research <c.rindi@gr-oss.io>", "Itamar Turner-Trauring <itamar@pythonspeed.com>"]
 description = "Search a string for multiple substrings at once"
@@ -14,8 +14,8 @@ name = "ahocorasick_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-aho-corasick = "1.0"
-itertools = "0.13.0"
+aho-corasick = "1"
+itertools = "0.14.0"
 pyo3 = { version = "0.23", features = ["py-clone"] }
 
 [features]
