@@ -1,6 +1,10 @@
 # Changelog
 
-# 0.22.1
+## 0.22.2
+
+* Update Rust dependencies.
+
+## 0.22.1
 
 * Added support for Python 3.13.
 * Dropped support for Python 3.8.
