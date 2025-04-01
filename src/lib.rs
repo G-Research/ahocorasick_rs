@@ -144,34 +144,37 @@ impl PyAhoCorasick {
 
         // Convert the `patterns` iterable into an Iterator over Py<PyString>:
         let mut patterns_iter = patterns.iter()?.map_while(|pat| {
-            pat.and_then(|i| i.downcast_into::<PyString>().map_err(PyErr::from).map(|i|i.into_py(py)))
-                .map_or_else(
-                    |e| {
-                        patterns_error.set(Some(e));
-                        None
-                    },
-                    Some::<Py<PyString>>,
-                )
+            pat.and_then(|i| {
+                i.downcast_into::<PyString>()
+                    .map_err(PyErr::from)
+                    .map(|i| i.into_py(py))
+            })
+            .map_or_else(
+                |e| {
+                    patterns_error.set(Some(e));
+                    None
+                },
+                Some::<Py<PyString>>,
+            )
         });
 
         // If store_patterns is None (the default), use a heuristic to decide
         // whether to store patterns.
         let mut patterns: Vec<Py<PyString>> = vec![];
-        let store_patterns = store_patterns
-            .unwrap_or_else(|| {
-                let mut total = 0;
-                let mut store_patterns = true;
-                for s in patterns_iter.by_ref() {
-                    // Highly unlikely that strings will fail to return length, so just expect().
-                    total += s.bind(py).len().expect("String doesn't have length?");
-                    patterns.push(s);
-                    if total > 4096 {
-                        store_patterns = false;
-                        break;
-                    }
+        let store_patterns = store_patterns.unwrap_or_else(|| {
+            let mut total = 0;
+            let mut store_patterns = true;
+            for s in patterns_iter.by_ref() {
+                // Highly unlikely that strings will fail to return length, so just expect().
+                total += s.bind(py).len().expect("String doesn't have length?");
+                patterns.push(s);
+                if total > 4096 {
+                    store_patterns = false;
+                    break;
                 }
-                store_patterns
-            });
+            }
+            store_patterns
+        });
 
         if store_patterns {
             for s in patterns_iter.by_ref() {
@@ -183,7 +186,8 @@ impl PyAhoCorasick {
             .kind(implementation.map(|i| i.into()))
             .match_kind(matchkind.into())
             .build(
-                patterns.clone()
+                patterns
+                    .clone()
                     .into_iter()
                     .chain(patterns_iter)
                     .chunks(10 * 1024)
@@ -254,14 +258,15 @@ impl PyAhoCorasick {
         let py = self_.py();
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
         let matches = py.allow_threads(|| matches.collect::<Vec<_>>().into_iter());
-        let result = match self_.patterns { Some(ref patterns) => {
-            PyList::new_bound(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
-        } _ => {
-            PyList::new_bound(
+        let result = match self_.patterns {
+            Some(ref patterns) => {
+                PyList::new_bound(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
+            }
+            _ => PyList::new_bound(
                 py,
                 matches.map(|m| PyString::new_bound(py, &haystack[m.start()..m.end()])),
-            )
-        }};
+            ),
+        };
         Ok(result.into())
     }
 }
