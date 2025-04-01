@@ -254,14 +254,14 @@ impl PyAhoCorasick {
         let py = self_.py();
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
         let matches = py.allow_threads(|| matches.collect::<Vec<_>>().into_iter());
-        let result = if let Some(ref patterns) = self_.patterns {
+        let result = match self_.patterns { Some(ref patterns) => {
             PyList::new_bound(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
-        } else {
+        } _ => {
             PyList::new_bound(
                 py,
                 matches.map(|m| PyString::new_bound(py, &haystack[m.start()..m.end()])),
             )
-        };
+        }};
         Ok(result.into())
     }
 }
