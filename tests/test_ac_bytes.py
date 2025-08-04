@@ -61,7 +61,7 @@ def test_different_byte_objects_matching(
     """
     haystack = b"hello, world, hello again"
     patterns = [memoryview(b"hello"), bytearray(b"world")]
-    ac = BytesAhoCorasick(patterns, implementation=implementation)
+    ac = BytesAhoCorasick(patterns, implementation=implementation)  # type: ignore
 
     expected = [b"hello", b"world", b"hello"]
 
