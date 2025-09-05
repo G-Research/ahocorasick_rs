@@ -8,6 +8,7 @@ readme = "README.md"
 license = "Apache 2.0"
 homepage = "https://github.com/G-Research/ahocorasick_rs"
 repository = "https://github.com/G-Research/ahocorasick_rs"
+resolver = "2"
 
 [lib]
 name = "ahocorasick_rs"

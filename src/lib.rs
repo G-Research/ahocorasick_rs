@@ -194,7 +194,7 @@ impl PyAhoCorasick {
                     .into_iter()
                     .flat_map(|chunk| {
                         // Release the GIL in case some other thread wants to do work:
-                        py.allow_threads(|| ());
+                        py.detach(|| ());
 
                         chunk.map(|s| s.extract::<String>(py).ok())
                     })
@@ -234,7 +234,7 @@ impl PyAhoCorasick {
         let byte_to_code_point = self_.get_byte_to_code_point(haystack);
         let py = self_.py();
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
-        py.allow_threads(|| {
+        py.detach(|| {
             Ok(matches
                 .map(|m| {
                     (
@@ -257,7 +257,7 @@ impl PyAhoCorasick {
     ) -> PyResult<Bound<'py, PyList>> {
         let py = self_.py();
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
-        let matches = py.allow_threads(|| matches.collect::<Vec<_>>().into_iter());
+        let matches = py.detach(|| matches.collect::<Vec<_>>().into_iter());
         let result = match self_.patterns {
             Some(ref patterns) => {
                 PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
@@ -428,7 +428,7 @@ impl PyBytesAhoCorasick {
             // However, if the haystack is a PyBytes, it's guaranteed to be immutable,
             // so the safety caveat doesn't apply, and we can safely release the GIL
             // while the matches iterator is holding a reference to the haystack.
-            py.allow_threads(|| Ok(matches.collect()))
+            py.detach(|| Ok(matches.collect()))
         }
     }
 }
