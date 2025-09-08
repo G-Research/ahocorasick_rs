@@ -75,6 +75,8 @@ jobs:
         with:
           name: "Wheels-tarball"
           path: target/wheels/ahocorasick*.tar.gz
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
 
   publish:
     needs: ['tests']
