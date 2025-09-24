@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0
+
+* Added support for Python 3.14 and free-threaded Python.
+* In order to support free-threaded Python, move the burden of thread safety onto users.
+  Specifically: you must not mutate byte arrays and the like that are passed to `BytesAhoCorasick` APIs while those APIs are running.
+
 ## 0.22.2
 
 * Update Rust dependencies.
