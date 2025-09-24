@@ -258,7 +258,8 @@ impl PyAhoCorasick {
         let py = self_.py();
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
         let matches = py.detach(|| matches.collect::<Vec<_>>().into_iter());
-        let result = match self_.patterns {
+
+        match self_.patterns {
             Some(ref patterns) => {
                 PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
             }
@@ -266,8 +267,7 @@ impl PyAhoCorasick {
                 py,
                 matches.map(|m| PyString::new(py, &haystack[m.start()..m.end()])),
             ),
-        };
-        result
+        }
     }
 }
 
@@ -282,7 +282,7 @@ impl<'py> TryFrom<Bound<'py, PyAny>> for PyBufferBytes<'py> {
 
     // Get a PyBufferBytes from a Python object
     fn try_from(obj: Bound<'py, PyAny>) -> PyResult<Self> {
-        let buffer = PyBuffer::<u8>::get(&obj).map_err(PyErr::from)?;
+        let buffer = PyBuffer::<u8>::get(&obj)?;
 
         if buffer.dimensions() > 1 {
             return Err(PyTypeError::new_err(
