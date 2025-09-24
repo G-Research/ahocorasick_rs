@@ -434,7 +434,7 @@ impl PyBytesAhoCorasick {
 }
 
 /// The main Python module.
-#[pymodule]
+#[pymodule(gil_used = false)]
 fn ahocorasick_rs(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMatchKind>()?;
     m.add_class::<Implementation>()?;
