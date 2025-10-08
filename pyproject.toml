@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "ahocorasick_rs"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     # Technically not necessary to run, only needed for type checking...
     "typing_extensions >= 4.6.0 ; python_version < '3.12'"
