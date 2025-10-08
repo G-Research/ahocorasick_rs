@@ -5,12 +5,13 @@ build-backend = "maturin"
 [project]
 name = "ahocorasick_rs"
 requires-python = ">=3.10"
+description = "Search for multiple substrings at the same time, and quickly too"
 dependencies = [
     # Technically not necessary to run, only needed for type checking...
     "typing_extensions >= 4.6.0 ; python_version < '3.12'"
 ]
 readme = { file = "README.md", content-type = "text/markdown" }
-dynamic = ["version", "summary", "license", "home_page", "project_url"]
+dynamic = ["version", "license", "home_page", "project_url"]
 
 [tool.maturin]
 python-source = "pysrc/"
