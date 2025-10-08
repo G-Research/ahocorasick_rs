@@ -8,7 +8,7 @@ use pyo3::{
     buffer::{PyBuffer, ReadOnlyCell},
     exceptions::{PyTypeError, PyValueError},
     prelude::*,
-    types::{PyBytes, PyList, PyString},
+    types::{PyList, PyString},
 };
 
 /// Search for multiple pattern strings against a single haystack string.
@@ -258,7 +258,8 @@ impl PyAhoCorasick {
         let py = self_.py();
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
         let matches = py.detach(|| matches.collect::<Vec<_>>().into_iter());
-        let result = match self_.patterns {
+
+        match self_.patterns {
             Some(ref patterns) => {
                 PyList::new(py, matches.map(|m| patterns[m.pattern()].clone_ref(py)))
             }
@@ -266,8 +267,7 @@ impl PyAhoCorasick {
                 py,
                 matches.map(|m| PyString::new(py, &haystack[m.start()..m.end()])),
             ),
-        };
-        result
+        }
     }
 }
 
@@ -282,7 +282,7 @@ impl<'py> TryFrom<Bound<'py, PyAny>> for PyBufferBytes<'py> {
 
     // Get a PyBufferBytes from a Python object
     fn try_from(obj: Bound<'py, PyAny>) -> PyResult<Self> {
-        let buffer = PyBuffer::<u8>::get(&obj).map_err(PyErr::from)?;
+        let buffer = PyBuffer::<u8>::get(&obj)?;
 
         if buffer.dimensions() > 1 {
             return Err(PyTypeError::new_err(
@@ -328,10 +328,12 @@ impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
         // wouldn't be able to prevent calling back into Python while holding
         // this reference, which might also result in a mutation).
         //
-        // This effectively means that it's only safe to hold onto the reference
-        // returned from this function as long as we don't release the GIL and
-        // don't call back into Python code while the reference is alive.
-        // See also https://github.com/PyO3/pyo3/issues/2824
+        // In addition, in a free-threaded world there is no GIL at all to
+        // prevent mutation.
+        //
+        // Following the lead of `pyo3-numpy`, we deal with this by documenting
+        // to the user that the buffer cannot be mutated while it is passed to
+        // our API. See also https://github.com/PyO3/pyo3/issues/2824
         unsafe { std::mem::transmute(slice) }
     }
 }
@@ -348,6 +350,12 @@ impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
 ///   finished.
 /// * ``matchkind``: Defaults to ``"MATCHKING_STANDARD"``.
 /// * ``implementation``: The underlying type of automaton to use for Aho-Corasick.
+///
+/// IMPORTANT: If you are passing in patterns that are mutable buffers, you MUST
+/// NOT mutate then in another thread while constructing this object. Doing so
+/// will result in undefined behavior. Once the ``BytesAhoCorasick`` object is
+/// constructed, however, they can be mutated since no references will be kept
+/// to them.
 #[pyclass(name = "BytesAhoCorasick")]
 struct PyBytesAhoCorasick {
     ac_impl: AhoCorasick,
@@ -406,35 +414,27 @@ impl PyBytesAhoCorasick {
     /// Return matches as tuple of (index_into_patterns,
     /// start_index_in_haystack, end_index_in_haystack). If ``overlapping`` is
     /// ``False`` (the default), don't include overlapping results.
+    ///
+    /// IMPORTANT: If you are passing in a mutable buffer, you MUST NOT mutate
+    /// it in another thread while this API is running. Doing so will result in
+    /// undefined behavior.
     #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_indexes(
         self_: PyRef<Self>,
         haystack: Bound<'_, PyAny>,
         overlapping: bool,
     ) -> PyResult<Vec<(u64, usize, usize)>> {
-        let is_bytes = haystack.is_instance_of::<PyBytes>();
         let py = haystack.py();
         let haystack_buffer = PyBufferBytes::try_from(haystack)?;
         let matches = get_matches(&self_.ac_impl, haystack_buffer.as_ref(), overlapping)?
             .map(|m| (m.pattern().as_u64(), m.start(), m.end()));
 
-        if !is_bytes {
-            // Note: we must collect here and not release the GIL or return an iterator
-            // from this function due to the safety caveat in the implementation of
-            // AsRef<[u8]> for PyBufferBytes, which is relevant here since the matches
-            // iterator is holding an AsRef reference to the haystack.
-            Ok(matches.collect())
-        } else {
-            // However, if the haystack is a PyBytes, it's guaranteed to be immutable,
-            // so the safety caveat doesn't apply, and we can safely release the GIL
-            // while the matches iterator is holding a reference to the haystack.
-            py.detach(|| Ok(matches.collect()))
-        }
+        py.detach(|| Ok(matches.collect()))
     }
 }
 
 /// The main Python module.
-#[pymodule]
+#[pymodule(gil_used = false)]
 fn ahocorasick_rs(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMatchKind>()?;
     m.add_class::<Implementation>()?;

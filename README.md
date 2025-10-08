@@ -64,6 +64,9 @@ You can construct a `AhoCorasick` object from any iterable (including generators
 
 You can also search `bytes`, `bytearray`, `memoryview`, and other objects supporting the Python buffer API.
 
+> **IMPORTANT:** If you are searching mutable buffer, you **must not mutate it in another thread** while `find_matches_as_indexes()` is running.
+> Similarly, the patterns cannot be mutated while the `BytesAhoCorasick` object is being constructed.
+
 ```python
 >>> patterns = [b"hello", b"world"]
 >>> ac = ahocorasick_rs.BytesAhoCorasick(patterns)
