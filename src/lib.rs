@@ -145,7 +145,7 @@ impl PyAhoCorasick {
         // Convert the `patterns` iterable into an Iterator over Py<PyString>:
         let mut patterns_iter = patterns.try_iter()?.map_while(|pat| {
             pat.and_then(|i| {
-                i.downcast_into::<PyString>()
+                i.cast_into::<PyString>()
                     .map_err(PyErr::from)
                     .map(|i| i.unbind())
             })
