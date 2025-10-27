@@ -65,13 +65,13 @@ jobs:
           pip install maturin==${{ env.MATURIN_VERSION }}
           maturin sdist
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: "Wheels-${{ matrix.python-version}}-${{ matrix.os }}"
           path: target/wheels/*.whl
       - name: Archive production artifacts 2
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}  # MUST MATCH ABOVE
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: "Wheels-tarball"
           path: target/wheels/ahocorasick*.tar.gz
