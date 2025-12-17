@@ -51,6 +51,7 @@ jobs:
         if: ${{ startsWith(matrix.os, 'macos') }}
         run: |
           rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
           echo "MATURIN_EXTRA=--target=universal2-apple-darwin" >> $GITHUB_ENV
       - name: "Wheels"
         uses: messense/maturin-action@v1
