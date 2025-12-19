@@ -28,13 +28,3 @@ To run benchmarks:
 $ just prep-benchmark  # on Linux Intel, disables turbobost
 $ just benchmark
 ```
-
-## Doing a release
-
-1. Update version in `Cargo.toml`
-2. Submit a PR
-3. Merge to `main`
-4. Tag in GitHub with new version number
-5. Download Wheels.zip artifact from GitHub Actions
-6. Upload by running `maturin upload unzipped-files/*.whl`
-
