@@ -8,6 +8,7 @@ use pyo3::{
     buffer::{PyBuffer, ReadOnlyCell},
     exceptions::{PyTypeError, PyValueError},
     prelude::*,
+    pybacked::PyBackedStr,
     types::{PyList, PyString},
 };
 
@@ -196,7 +197,7 @@ impl PyAhoCorasick {
                         // Release the GIL in case some other thread wants to do work:
                         py.detach(|| ());
 
-                        chunk.map(|s| s.extract::<String>(py).ok())
+                        chunk.map(|s| s.extract::<PyBackedStr>(py).ok())
                     })
                     .map_while(|s| {
                         s.and_then(|s| {
