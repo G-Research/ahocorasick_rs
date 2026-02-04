@@ -8,6 +8,7 @@ use pyo3::{
     buffer::{PyBuffer, ReadOnlyCell},
     exceptions::{PyTypeError, PyValueError},
     prelude::*,
+    pybacked::PyBackedStr,
     types::{PyList, PyString},
 };
 
@@ -88,8 +89,8 @@ impl PyAhoCorasick {
 }
 
 /// Python equivalent of MatchKind.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[pyclass(eq, name = "MatchKind")]
+#[derive(Clone, Debug, PartialEq)]
+#[pyclass(eq, name = "MatchKind", from_py_object)]
 enum PyMatchKind {
     Standard,
     LeftmostFirst,
@@ -107,9 +108,9 @@ impl From<PyMatchKind> for MatchKind {
 }
 
 /// Python equivalent of AhoCorasickKind.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
-#[pyclass(eq)]
+#[pyclass(eq, from_py_object)]
 enum Implementation {
     NoncontiguousNFA,
     ContiguousNFA,
@@ -196,7 +197,7 @@ impl PyAhoCorasick {
                         // Release the GIL in case some other thread wants to do work:
                         py.detach(|| ());
 
-                        chunk.map(|s| s.extract::<String>(py).ok())
+                        chunk.map(|s| s.extract::<PyBackedStr>(py).ok())
                     })
                     .map_while(|s| {
                         s.and_then(|s| {
