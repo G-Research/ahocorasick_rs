@@ -13,7 +13,6 @@ on:
 env:
   # Give nice tracebacks on segfaults.
   PYTHONFAULTHANDLER: "true"
-  MATURIN_VERSION: "1.9.6"
 
 
 jobs:
@@ -54,9 +53,8 @@ jobs:
           rustup target add x86_64-apple-darwin
           echo "MATURIN_EXTRA=--target=universal2-apple-darwin" >> $GITHUB_ENV
       - name: "Wheels"
-        uses: messense/maturin-action@v1
+        uses: pyo3/maturin-action@v1
         with:
-          maturin-version: "${{ env.MATURIN_VERSION }}"
           command: build
           manylinux: auto
           args: --release --out target/wheels/ -i python${{ matrix.python-version }} ${{ env.MATURIN_EXTRA }}
