@@ -6,11 +6,11 @@ Thank you for considering contributing! Note that by contributing your code, you
 
 First, download and install [Just](https://github.com/casey/just)
 
-Then, setup a virtualenv, install dev dependencies, and compile the code:
+Then, set up a virtualenv, install dev dependencies, and compile the code:
 
 ```bash
 just setup
-source venv/bin/activateo  # or Windoes equivalent
+source venv/bin/activate  # or Windows equivalent
 just build-dev
 ```
 
@@ -25,6 +25,6 @@ $ just test
 To run benchmarks:
 
 ```shell-session
-$ just prep-benchmark  # on Linux Intel, disables turbobost
+$ just prep-benchmark  # on Linux Intel, disables Turbo Boost
 $ just benchmark
 ```
