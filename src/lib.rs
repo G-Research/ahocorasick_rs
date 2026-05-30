@@ -232,7 +232,8 @@ impl PyAhoCorasick {
         haystack: &str,
         overlapping: bool,
     ) -> PyResult<Vec<(u64, usize, usize)>> {
-        let byte_to_code_point = self_.get_byte_to_code_point(haystack);
+        let byte_to_code_point =
+            (!haystack.is_ascii()).then(|| self_.get_byte_to_code_point(haystack));
         let py = self_.py();
         let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
         py.detach(|| {
@@ -240,8 +241,12 @@ impl PyAhoCorasick {
                 .map(|m| {
                     (
                         m.pattern().as_u64(),
-                        byte_to_code_point[m.start()],
-                        byte_to_code_point[m.end()],
+                        byte_to_code_point
+                            .as_ref()
+                            .map_or(m.start(), |mapping| mapping[m.start()]),
+                        byte_to_code_point
+                            .as_ref()
+                            .map_or(m.end(), |mapping| mapping[m.end()]),
                     )
                 })
                 .collect())
