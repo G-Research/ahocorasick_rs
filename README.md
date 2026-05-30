@@ -100,7 +100,7 @@ This returns the pattern that matches first, semantically-speaking.
 This is the default matching pattern.
 
 ```python
->>> ac AhoCorasick(["disco", "disc", "discontent"])
+>>> ac = AhoCorasick(["disco", "disc", "discontent"])
 >>> ac.find_matches_as_strings("discontent")
 ['disc']
 >>> ac = AhoCorasick(["b", "abcd"])
@@ -128,6 +128,7 @@ That means the order of patterns makes a difference:
 >>> ac.find_matches_as_strings("discontent")
 ['disco']
 >>> ac = AhoCorasick(["disc", "disco"], matchkind=MatchKind.LeftmostFirst)
+>>> ac.find_matches_as_strings("discontent")
 ['disc']
 ```
 
@@ -138,7 +139,7 @@ Here we see `abcd` matched first, because it starts before `b`:
 >>> ac.find_matches_as_strings("abcdef")
 ['abcd']
 ```
-##### `LeftmostLongest`
+#### `LeftmostLongest`
 
 This returns the leftmost-in-the-haystack matching pattern that is longest:
 
