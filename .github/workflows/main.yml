@@ -35,9 +35,9 @@ jobs:
       - uses: "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405"
         with:
           python-version: "${{ matrix.python-version }}"
-      - uses: "dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30"
+      - uses: "dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88"  # master
         with:
-          toolchain: stable
+          toolchain: "1.93.0"
           components: "clippy, rustfmt"
       - name: "Compile"
         run: |
