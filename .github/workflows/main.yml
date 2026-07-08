@@ -36,6 +36,8 @@ jobs:
         with:
           python-version: "${{ matrix.python-version }}"
       - uses: "dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30"
+        with:
+          toolchain: stable
       - name: "Compile"
         run: |
           pip install -r requirements-dev.txt
