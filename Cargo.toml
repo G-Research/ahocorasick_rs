@@ -16,7 +16,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 aho-corasick = "1"
-itertools = "0.14.0"
+itertools = "0.15.0"
 pyo3 = { version = "0.28", features = ["py-clone"] }
 
 [features]
