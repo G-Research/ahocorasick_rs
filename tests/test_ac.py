@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Optional
+import gc
+import sys
+import threading
+import weakref
+
+from functools import partial
+from typing import Callable, Optional
 
 import pytest
 
@@ -11,6 +17,7 @@ from hypothesis import given
 
 from ahocorasick_rs import (
     AhoCorasick,
+    BytesAhoCorasick,
     MATCHKIND_STANDARD,
     MATCHKIND_LEFTMOST_FIRST,
     MATCHKIND_LEFTMOST_LONGEST,
@@ -273,6 +280,8 @@ def test_overlapping() -> None:
             ac.find_matches_as_strings(haystack, overlapping=True)
         with pytest.raises(ValueError):
             ac.find_matches_as_indexes(haystack, overlapping=True)
+        with pytest.raises(ValueError):
+            ac.find_matches_as_indexes_iter(haystack, overlapping=True)
 
     # Default is MatchKind.Standard:
     expected = [
@@ -290,3 +299,170 @@ def test_overlapping() -> None:
     # Other matchkinds don't support overlapping.
     assert_no_overlapping(AhoCorasick(patterns, matchkind=MatchKind.LeftmostFirst))
     assert_no_overlapping(AhoCorasick(patterns, matchkind=MatchKind.LeftmostLongest))
+
+
+def test_find_matches_as_indexes_iter() -> None:
+    haystack = "🙂 winter disc discontent"
+    patterns = ["disc", "disco", "discontent", "winter"]
+    ac = AhoCorasick(patterns)
+
+    expected = [
+        (end, idx)
+        for idx, _start, end in ac.find_matches_as_indexes(haystack, overlapping=True)
+    ]
+    matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+    assert iter(matches) is matches
+    assert next(matches) == expected[0]
+    assert list(matches) == expected[1:]
+    assert list(matches) == []
+    non_overlapping = [
+        (end, idx) for idx, _start, end in ac.find_matches_as_indexes(haystack)
+    ]
+    assert list(ac.find_matches_as_indexes_iter(haystack)) == non_overlapping
+
+
+def test_find_matches_as_indexes_iter_dense_unicode_overlaps() -> None:
+    unit = "é🙂e"
+    width = 512
+    haystack = "🧪a" + unit * 4096 + "終"
+    ac = AhoCorasick([unit * width, unit], store_patterns=False)
+    matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+
+    for occurrence in range(1, 4097):
+        end = 2 + 3 * occurrence
+        if occurrence >= width:
+            assert next(matches) == (end, 0)
+        assert next(matches) == (end, 1)
+    assert next(matches, None) is None
+
+
+def test_match_iterators_keep_independent_unicode_refills() -> None:
+    ac = AhoCorasick(["🙂é", "é"], iter_batch_size=2)
+    left = ac.find_matches_as_indexes_iter("🙂é🙂é🙂é", overlapping=True)
+    right = ac.find_matches_as_indexes_iter("x🙂éx🙂é", overlapping=True)
+
+    assert next(left) == (2, 0)
+    assert next(right) == (3, 0)
+    assert next(left) == (2, 1)
+    assert next(right) == (3, 1)
+    assert list(left) == [(4, 0), (4, 1), (6, 0), (6, 1)]
+    assert list(right) == [(6, 0), (6, 1)]
+
+
+@pytest.mark.parametrize(
+    "make_matcher",
+    [partial(AhoCorasick, ["a"]), partial(BytesAhoCorasick, [b"a"])],
+    ids=["str", "bytes"],
+)
+def test_iter_batch_size_validation(make_matcher: Callable[..., object]) -> None:
+    with pytest.raises(ValueError, match="iter_batch_size must be positive"):
+        make_matcher(iter_batch_size=0)
+    for size in (-1, 1 << 128):
+        with pytest.raises(OverflowError):
+            make_matcher(iter_batch_size=size)
+    with pytest.raises(TypeError):
+        make_matcher(iter_batch_size=1.5)
+
+
+def test_find_matches_as_indexes_iter_participates_in_garbage_collection() -> None:
+    class Haystack(str):
+        iterator: object
+
+    ac = AhoCorasick(["a"])
+    haystack = Haystack("a")
+    haystack_ref = weakref.ref(haystack)
+    matches = ac.find_matches_as_indexes_iter(haystack)
+    haystack.iterator = matches
+    del haystack, matches
+
+    gc.collect()
+    assert haystack_ref() is None
+
+
+def test_match_iterator_holds_haystack_until_it_reports_exhaustion() -> None:
+    class Haystack(str):
+        pass
+
+    haystack = Haystack("aaa")
+    haystack_ref = weakref.ref(haystack)
+    matches = AhoCorasick(["a"]).find_matches_as_indexes_iter(haystack)
+    del haystack
+
+    assert next(matches) == (1, 0)
+    assert next(matches) == (2, 0)
+    assert haystack_ref() is not None
+    assert next(matches) == (3, 0)
+    assert haystack_ref() is not None
+    assert next(matches, None) is None
+    assert haystack_ref() is None
+
+
+@pytest.mark.skipif(
+    not getattr(sys, "_is_gil_enabled", lambda: True)(), reason="requires the GIL"
+)
+@pytest.mark.parametrize("as_bytes", [False, True], ids=["str", "bytes"])
+@pytest.mark.parametrize(
+    "after_first, iter_batch_size",
+    [
+        pytest.param(False, 128, id="first_scan"),
+        pytest.param(True, 128, id="refill"),
+        pytest.param(True, 1, id="scalar"),
+    ],
+)
+def test_find_matches_as_indexes_iter_releases_gil(
+    as_bytes: bool, after_first: bool, iter_batch_size: int
+) -> None:
+    # The overlapping search visits repeated partial matches through the
+    # automaton. Allow several searches for the OS to schedule the worker.
+    haystack = ("ab" if after_first else "") + "a" * 8_000_000
+    if as_bytes:
+        ac_bytes = BytesAhoCorasick([b"ab", b"b"], iter_batch_size=iter_batch_size)
+        haystack_bytes = haystack.encode()
+        searches = [
+            ac_bytes.find_matches_as_indexes_iter(haystack_bytes, overlapping=True)
+            for _ in range(4)
+        ]
+    else:
+        ac = AhoCorasick(["ab", "b"], iter_batch_size=iter_batch_size)
+        searches = [
+            ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+            for _ in range(4)
+        ]
+
+    if after_first:
+        for matches in searches:
+            assert next(matches) == (2, 0)
+    expected = (2, 1) if after_first and iter_batch_size > 1 else None
+
+    ready = threading.Event()
+    searching = threading.Event()
+    progressed = threading.Event()
+
+    def make_progress() -> None:
+        ready.set()
+        searching.wait()
+        progressed.set()
+
+    worker = threading.Thread(target=make_progress)
+    worker.start()
+    old_interval = sys.getswitchinterval()
+    # Suppress normal interpreter thread switches between the search calls.
+    sys.setswitchinterval(60.0)
+    try:
+        assert ready.wait(timeout=5)
+        searching.set()
+        assert not progressed.is_set()
+        if iter_batch_size == 1:
+            # The pending match is yielded before any further scan.
+            for matches in searches:
+                assert next(matches) == (2, 1)
+            assert not progressed.is_set()
+        for matches in searches:
+            assert next(matches, None) == expected
+            if progressed.is_set():
+                break
+        assert progressed.is_set()
+    finally:
+        sys.setswitchinterval(old_interval)
+        searching.set()
+        worker.join()

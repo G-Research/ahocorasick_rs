@@ -125,6 +125,20 @@ def test_ahocorasick_rs_standard_indexes(benchmark, test_data):
 
 
 @parameterize_datasets
+def test_ahocorasick_rs_standard_indexes_iter(benchmark, test_data):
+    """ahocorasick_rs standard matching algorithm, lazily returning indexes."""
+    patterns, haystacks = test_data
+    ac = ahocorasick_rs.AhoCorasick(patterns)
+
+    def run():
+        for haystack in haystacks:
+            x = list(ac.find_matches_as_indexes_iter(haystack))
+        return x
+
+    print(benchmark(run))
+
+
+@parameterize_datasets
 def test_ahocorasick_rs_overlapping(benchmark, test_data):
     """ahocorasick_rs overlapping matches."""
     patterns, haystacks = test_data

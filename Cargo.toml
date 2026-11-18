@@ -15,7 +15,7 @@ name = "ahocorasick_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-aho-corasick = "1"
+aho-corasick = { git = "https://github.com/PLPeeters/aho-corasick.git", rev = "e839485e4735770de34b89caf6e19a0a1ae92b98" }
 itertools = "0.14.0"
 pyo3 = { version = "0.28", features = ["py-clone"] }
 

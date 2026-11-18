@@ -60,6 +60,41 @@ You can construct a `AhoCorasick` object from any iterable (including generators
 ['hello', 'world', 'hello']
 ```
 
+For large result sets, `find_matches_as_indexes_iter()` yields matches one at
+a time, so you can stop early without building a list of all matches. Unlike
+`find_matches_as_indexes()`, it yields `(end_index_in_haystack,
+index_into_patterns)` pairs, without the start index. End offsets and ordering
+are the same as in `find_matches_as_indexes()`. The `overlapping` option
+defaults to `False` and has the same behavior as on the list API:
+
+```python
+>>> matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+>>> next(matches)
+(22, 0)
+```
+
+The first call searches for one match. For strings and built-in `bytes`, later
+calls may search ahead and buffer up to `iter_batch_size` matches. A refill can
+scan to the end of the haystack if fewer matches remain.
+
+Both matchers accept the keyword-only constructor argument `iter_batch_size`.
+The value must be positive. The default is 128.
+
+With strings and built-in `bytes`, smaller batches reduce unused work if you
+stop early. They also make the iterator release and reacquire the GIL more
+often. This can reduce throughput when you consume many matches, especially
+when matches are dense. A batch size of 1 disables read-ahead.
+
+```python
+>>> ac = ahocorasick_rs.AhoCorasick(patterns, iter_batch_size=1)
+>>> next(ac.find_matches_as_indexes_iter(haystack))
+(22, 0)
+```
+
+The iterator retains the haystack until it reports exhaustion or is dropped.
+Other buffer inputs always search one match at a time. When searching mutable
+buffers, do not mutate the buffer while the iterator is in use.
+
 ### Searching `bytes` and other similar objects
 
 You can also search `bytes`, `bytearray`, `memoryview`, and other objects supporting the Python buffer API.
@@ -195,8 +230,8 @@ You can control the behavior by using the `store_patterns` keyword argument to `
 
 ## Implementation details <a name="implementation"></a>
 
-* Matching on strings releases the GIL, to enable concurrency.
-  Matching on bytes does not currently release the GIL for memory-safety reasons, unless the haystack type is `bytes`.
+* Matching on strings and list-returning searches on bytes release the GIL.
+  The bytes iterator releases the GIL for built-in `bytes` haystacks.
 * Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
 
 ## Benchmarks <a name="benchmarks"></a>
