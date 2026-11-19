@@ -321,6 +321,93 @@ def test_find_matches_as_indexes_iter() -> None:
     assert list(ac.find_matches_as_indexes_iter(haystack)) == non_overlapping
 
 
+@pytest.mark.parametrize(
+    "haystack",
+    [
+        "winter disc discontent winter",
+        "wintér disc discontent winter",
+        "☃ winter 🙂 disc é discontent 🙂 winter",
+        "é🙂☃winter",
+        "disc🙂",
+    ],
+    ids=[
+        "ascii",
+        "latin1",
+        "multibyte-before-matches",
+        "match-at-end",
+        "match-at-start",
+    ],
+)
+@pytest.mark.parametrize(
+    "matchkind, overlapping",
+    [
+        (MatchKind.Standard, False),
+        (MatchKind.Standard, True),
+        (MatchKind.LeftmostFirst, False),
+        (MatchKind.LeftmostLongest, False),
+    ],
+)
+def test_indexes_are_code_points_for_ascii_and_non_ascii(
+    haystack: str, matchkind: MatchKind, overlapping: bool
+) -> None:
+    """
+    Indexes are code point offsets, whether or not the haystack is ASCII
+    (byte offsets only match code point offsets for ASCII).
+    """
+    # "inter" shares its end with "winter", exercising pending overlapping matches.
+    patterns = ["disc", "disco", "discontent", "winter", "inter", "🙂 winter"]
+    ac = AhoCorasick(patterns, matchkind=matchkind)
+    bytes_ac = BytesAhoCorasick([p.encode() for p in patterns], matchkind=matchkind)
+    encoded = haystack.encode()
+
+    def to_code_point(byte_offset: int) -> int:
+        return len(encoded[:byte_offset].decode())
+
+    # The bytes API returns byte offsets, which we convert independently.
+    expected = [
+        (pattern, to_code_point(start), to_code_point(end))
+        for pattern, start, end in bytes_ac.find_matches_as_indexes(
+            encoded, overlapping=overlapping
+        )
+    ]
+    assert expected
+
+    matches = ac.find_matches_as_indexes(haystack, overlapping=overlapping)
+    assert matches == expected
+    assert [haystack[start:end] for _, start, end in matches] == [
+        patterns[pattern] for pattern, _, _ in matches
+    ]
+    assert list(ac.find_matches_as_indexes_iter(haystack, overlapping=overlapping)) == [
+        (end, pattern) for pattern, _, end in expected
+    ]
+
+
+class _ByteLengthStr(str):
+    """A ``str`` subclass whose ``__len__`` is the UTF-8 byte length."""
+
+    def __len__(self) -> int:
+        return len(self.encode())
+
+
+class _RaisingLenStr(str):
+    """A ``str`` subclass whose ``__len__`` raises."""
+
+    def __len__(self) -> int:
+        raise RuntimeError("__len__ must not be called")
+
+
+@pytest.mark.parametrize("str_type", [_ByteLengthStr, _RaisingLenStr])
+def test_indexes_ignore_str_subclass_len(str_type: type[str]) -> None:
+    """
+    Indexes are true code point offsets, even if a ``str`` subclass overrides
+    ``__len__``.
+    """
+    ac = AhoCorasick(["winter"])
+    haystack = str_type("é winter")
+    assert ac.find_matches_as_indexes(haystack) == [(0, 2, 8)]
+    assert list(ac.find_matches_as_indexes_iter(haystack)) == [(8, 0)]
+
+
 def test_find_matches_as_indexes_iter_dense_unicode_overlaps() -> None:
     unit = "é🙂e"
     width = 512

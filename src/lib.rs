@@ -8,6 +8,7 @@ use itertools::Itertools;
 use pyo3::{
     buffer::{PyBuffer, ReadOnlyCell},
     exceptions::{PyTypeError, PyValueError},
+    ffi,
     gc::{PyTraverseError, PyVisit},
     prelude::*,
     pybacked::PyBackedStr,
@@ -41,6 +42,16 @@ struct PyAhoCorasick {
 #[cold]
 fn match_error_to_pyerror(e: MatchError) -> PyErr {
     PyValueError::new_err(e.to_string())
+}
+
+/// Whether a Python string is ASCII, given its UTF-8 length: only then are
+/// there as many code points as bytes, so byte offsets are code point offsets.
+fn is_ascii(haystack: &Bound<'_, PyString>, utf8_len: usize) -> PyResult<bool> {
+    // SAFETY: `haystack` is a valid `str` object and we hold the GIL. Unlike
+    // `len()`, this is O(1) and ignores any `__len__` override in a subclass.
+    let code_points = unsafe { ffi::PyUnicode_GetLength(haystack.as_ptr()) };
+    let code_points = usize::try_from(code_points).map_err(|_| PyErr::fetch(haystack.py()))?;
+    Ok(code_points == utf8_len)
 }
 
 fn validate_iter_batch_size(iter_batch_size: usize) -> PyResult<NonZeroUsize> {
@@ -307,21 +318,22 @@ impl PyAhoCorasick {
     #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_indexes(
         self_: PyRef<Self>,
-        haystack: &str,
+        haystack: &Bound<'_, PyString>,
         overlapping: bool,
     ) -> PyResult<Vec<(u64, usize, usize)>> {
-        let byte_to_code_point = self_.get_byte_to_code_point(haystack);
+        let haystack_str = haystack.to_str()?;
+        // For ASCII, byte offsets are code point offsets, so skip the mapping.
+        let byte_to_code_point = (!is_ascii(haystack, haystack_str.len())?)
+            .then(|| self_.get_byte_to_code_point(haystack_str));
+        let to_index = |byte_off: usize| match &byte_to_code_point {
+            Some(mapping) => mapping[byte_off],
+            None => byte_off,
+        };
         let py = self_.py();
-        let matches = get_matches(&self_.ac_impl, haystack.as_bytes(), overlapping)?;
+        let matches = get_matches(&self_.ac_impl, haystack_str.as_bytes(), overlapping)?;
         py.detach(|| {
             Ok(matches
-                .map(|m| {
-                    (
-                        m.pattern().as_u64(),
-                        byte_to_code_point[m.start()],
-                        byte_to_code_point[m.end()],
-                    )
-                })
+                .map(|m| (m.pattern().as_u64(), to_index(m.start()), to_index(m.end())))
                 .collect())
         })
     }
@@ -339,7 +351,8 @@ impl PyAhoCorasick {
         haystack: Bound<'_, PyString>,
         overlapping: bool,
     ) -> PyResult<Py<PyMatchIterator>> {
-        let haystack = PyBackedStr::try_from(haystack)?;
+        let backed = PyBackedStr::try_from(haystack.clone())?;
+        let ascii = is_ascii(&haystack, backed.len())?;
         let (ac_impl, iter_batch_size) = {
             let matcher = self_.bind(py).borrow();
             (matcher.ac_impl.clone(), matcher.iter_batch_size)
@@ -347,7 +360,8 @@ impl PyAhoCorasick {
         let iterator = PyMatchIterator::new(
             ac_impl,
             MatchHaystack::String {
-                haystack,
+                haystack: backed,
+                ascii,
                 end_code_point: 0,
             },
             overlapping,
@@ -487,6 +501,8 @@ struct PyBytesAhoCorasick {
 enum MatchHaystack {
     String {
         haystack: PyBackedStr,
+        /// Byte offsets are code point offsets, so no counting is needed.
+        ascii: bool,
         end_code_point: usize,
     },
     Bytes(Py<PyBytes>),
@@ -511,6 +527,7 @@ impl MatchHaystack {
         let batch = match self {
             Self::String {
                 haystack,
+                ascii,
                 end_code_point,
             } => {
                 let haystack = haystack.as_str();
@@ -520,7 +537,13 @@ impl MatchHaystack {
                         haystack.as_bytes(),
                         batch_size,
                         |previous_end_byte, mat| {
-                            code_point_match_pair(haystack, previous_end_byte, end_code_point, mat)
+                            code_point_match_pair(
+                                haystack,
+                                *ascii,
+                                previous_end_byte,
+                                end_code_point,
+                                mat,
+                            )
                         },
                     )
                 })?
@@ -546,6 +569,7 @@ fn byte_match_pair(mat: Match) -> (usize, u64) {
 #[inline]
 fn code_point_match_pair(
     haystack: &str,
+    ascii: bool,
     previous_end_byte: usize,
     end_code_point: &mut usize,
     mat: Match,
@@ -553,11 +577,13 @@ fn code_point_match_pair(
     // Match ends never move backward, even when starts overlap.
     let end_byte = mat.end();
     let byte_delta = end_byte - previous_end_byte;
-    // A single byte between UTF-8 boundaries is one code point.
-    *end_code_point += if byte_delta <= 1 {
-        byte_delta
+    *end_code_point = if ascii {
+        end_byte
+    } else if byte_delta <= 1 {
+        // A single byte between UTF-8 boundaries is one code point.
+        *end_code_point + byte_delta
     } else {
-        haystack[previous_end_byte..end_byte].chars().count()
+        *end_code_point + haystack[previous_end_byte..end_byte].chars().count()
     };
     (*end_code_point, mat.pattern().as_u64())
 }
@@ -645,12 +671,19 @@ impl PyMatchIterator {
         let found = match haystack {
             MatchHaystack::String {
                 haystack,
+                ascii,
                 end_code_point,
             } => {
                 let haystack = haystack.as_str();
                 py.detach(|| {
                     Ok(search(haystack.as_bytes())?.map(|mat| {
-                        code_point_match_pair(haystack, previous_end_byte, end_code_point, mat)
+                        code_point_match_pair(
+                            haystack,
+                            *ascii,
+                            previous_end_byte,
+                            end_code_point,
+                            mat,
+                        )
                     }))
                 })
             }

@@ -32,6 +32,11 @@ def make_haystacks_long():
 
 
 HAYSTACKS_LONG = make_haystacks_long()
+# Same haystacks with the em dashes replaced, so they are pure ASCII (byte
+# offsets are code point offsets, which index conversion can exploit):
+HAYSTACKS_LONG_ASCII = [haystack.replace("—", "-") for haystack in HAYSTACKS_LONG]
+assert all(haystack.isascii() for haystack in HAYSTACKS_LONG_ASCII)
+assert not any(haystack.isascii() for haystack in HAYSTACKS_LONG)
 
 PATTERNS_SHORT = [
     "abc",
@@ -63,8 +68,12 @@ def make_pyahocorasick_automaton(patterns):
 
 parameterize_datasets = pytest.mark.parametrize(
     "test_data",
-    [(PATTERNS_SHORT, HAYSTACKS_SHORT), (PATTERNS_LONG, HAYSTACKS_LONG)],
-    ids=["short", "long"],
+    [
+        (PATTERNS_SHORT, HAYSTACKS_SHORT),
+        (PATTERNS_LONG, HAYSTACKS_LONG),
+        (PATTERNS_LONG, HAYSTACKS_LONG_ASCII),
+    ],
+    ids=["short", "long", "long_ascii"],
 )
 
 
