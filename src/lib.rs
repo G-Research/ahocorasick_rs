@@ -1,4 +1,4 @@
-use std::{cell::Cell, num::NonZeroUsize};
+use std::cell::Cell;
 
 use aho_corasick::{
     AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Input, Match, MatchError, MatchKind,
@@ -17,7 +17,7 @@ use pyo3::{
 
 /// Search for multiple pattern strings against a single haystack string.
 ///
-/// The constructor accepts five arguments.
+/// The constructor accepts four arguments.
 ///
 /// * ``patterns``: A list of strings, the patterns to match against. Empty
 ///   patterns are not supported and will result in a ``ValueError`` exception
@@ -29,13 +29,10 @@ use pyo3::{
 ///   a short list of small strings (up to 4KB) results in ``True``, and
 ///   anything else results in ``False``.
 /// * ``implementation``: The underlying type of automaton to use for Aho-Corasick.
-/// * ``iter_batch_size``: Maximum matches buffered per iterator refill (default
-///   128). Use 1 to search one match at a time.
 #[pyclass(name = "AhoCorasick")]
 struct PyAhoCorasick {
     ac_impl: AhoCorasick,
     patterns: Option<Vec<Py<PyString>>>,
-    iter_batch_size: NonZeroUsize,
 }
 
 /// Convert a MatchError to something meaningful to Python users
@@ -54,10 +51,7 @@ fn is_ascii(haystack: &Bound<'_, PyString>, utf8_len: usize) -> PyResult<bool> {
     Ok(code_points == utf8_len)
 }
 
-fn validate_iter_batch_size(iter_batch_size: usize) -> PyResult<NonZeroUsize> {
-    NonZeroUsize::new(iter_batch_size)
-        .ok_or_else(|| PyValueError::new_err("iter_batch_size must be positive"))
-}
+const ITER_BATCH_SIZE: usize = 128;
 
 /// Resumable match traversal. The caller supplies the same haystack for every scan.
 struct MatchCursor {
@@ -121,11 +115,10 @@ impl MatchCursor {
         &mut self,
         ac_impl: &AhoCorasick,
         haystack: &[u8],
-        batch_size: usize,
         mut to_pair: impl FnMut(usize, Match) -> (usize, u64),
     ) -> Result<Vec<(usize, u64)>, MatchError> {
         let mut batch = Vec::new();
-        for _ in 0..batch_size {
+        for _ in 0..ITER_BATCH_SIZE {
             let previous_end_byte = self.end_byte;
             let Some(mat) = self.next_match(ac_impl, haystack)? else {
                 break;
@@ -215,16 +208,14 @@ impl From<Implementation> for AhoCorasickKind {
 impl PyAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = None, *, iter_batch_size = 128))]
+    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, store_patterns = None, implementation = None))]
     fn new(
         py: Python,
         patterns: Bound<'_, PyAny>,
         matchkind: PyMatchKind,
         store_patterns: Option<bool>,
         implementation: Option<Implementation>,
-        iter_batch_size: usize,
     ) -> PyResult<Self> {
-        let iter_batch_size = validate_iter_batch_size(iter_batch_size)?;
         // If set, this means we had an error while parsing the strings from the patterns iterable.
         let patterns_error: Cell<Option<PyErr>> = Cell::new(None);
 
@@ -305,11 +296,7 @@ impl PyAhoCorasick {
 
         let patterns = if store_patterns { Some(patterns) } else { None };
 
-        Ok(Self {
-            ac_impl,
-            patterns,
-            iter_batch_size,
-        })
+        Ok(Self { ac_impl, patterns })
     }
 
     /// Return matches as tuple of (index_into_patterns,
@@ -342,8 +329,8 @@ impl PyAhoCorasick {
     /// index_into_patterns)`` tuples, in the same order as
     /// ``find_matches_as_indexes()``.
     ///
-    /// After the first match, the iterator may search ahead according to
-    /// ``iter_batch_size`` on the matcher.
+    /// After the first match, the iterator may search ahead and buffer up
+    /// to 128 matches.
     #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_indexes_iter(
         self_: Py<Self>,
@@ -353,10 +340,7 @@ impl PyAhoCorasick {
     ) -> PyResult<Py<PyMatchIterator>> {
         let backed = PyBackedStr::try_from(haystack.clone())?;
         let ascii = is_ascii(&haystack, backed.len())?;
-        let (ac_impl, iter_batch_size) = {
-            let matcher = self_.bind(py).borrow();
-            (matcher.ac_impl.clone(), matcher.iter_batch_size)
-        };
+        let ac_impl = self_.bind(py).borrow().ac_impl.clone();
         let iterator = PyMatchIterator::new(
             ac_impl,
             MatchHaystack::String {
@@ -365,7 +349,6 @@ impl PyAhoCorasick {
                 end_code_point: 0,
             },
             overlapping,
-            iter_batch_size,
         )?;
         Py::new(py, iterator)
     }
@@ -476,7 +459,7 @@ impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
 /// addition to ``bytes``, you can use other objects that support the Python
 /// buffer API, like ``memoryview`` and ``bytearray``.
 ///
-/// The constructor accepts four arguments.
+/// The constructor accepts three arguments.
 ///
 /// * ``patterns``: A list of bytes, the patterns to match against. Empty
 ///   patterns are not supported and will result in a ``ValueError`` exception
@@ -484,8 +467,6 @@ impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
 ///   finished.
 /// * ``matchkind``: Defaults to ``"MATCHKING_STANDARD"``.
 /// * ``implementation``: The underlying type of automaton to use for Aho-Corasick.
-/// * ``iter_batch_size``: Maximum matches buffered per iterator refill on
-///   built-in bytes (default 128). Use 1 to search one match at a time.
 ///
 /// IMPORTANT: If you are passing in patterns that are mutable buffers, you MUST
 /// NOT mutate then in another thread while constructing this object. Doing so
@@ -495,7 +476,6 @@ impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
 #[pyclass(name = "BytesAhoCorasick")]
 struct PyBytesAhoCorasick {
     ac_impl: AhoCorasick,
-    iter_batch_size: NonZeroUsize,
 }
 
 enum MatchHaystack {
@@ -522,7 +502,6 @@ impl MatchHaystack {
         py: Python<'_>,
         ac_impl: &AhoCorasick,
         cursor: &mut MatchCursor,
-        batch_size: usize,
     ) -> Result<Option<Vec<(usize, u64)>>, MatchError> {
         let batch = match self {
             Self::String {
@@ -532,27 +511,21 @@ impl MatchHaystack {
             } => {
                 let haystack = haystack.as_str();
                 py.detach(|| {
-                    cursor.collect_batch(
-                        ac_impl,
-                        haystack.as_bytes(),
-                        batch_size,
-                        |previous_end_byte, mat| {
-                            code_point_match_pair(
-                                haystack,
-                                *ascii,
-                                previous_end_byte,
-                                end_code_point,
-                                mat,
-                            )
-                        },
-                    )
+                    cursor.collect_batch(ac_impl, haystack.as_bytes(), |previous_end_byte, mat| {
+                        code_point_match_pair(
+                            haystack,
+                            *ascii,
+                            previous_end_byte,
+                            end_code_point,
+                            mat,
+                        )
+                    })
                 })?
             }
             Self::Bytes(haystack) => {
                 let haystack = haystack.as_bytes(py);
                 py.detach(|| {
-                    cursor
-                        .collect_batch(ac_impl, haystack, batch_size, |_, mat| byte_match_pair(mat))
+                    cursor.collect_batch(ac_impl, haystack, |_, mat| byte_match_pair(mat))
                 })?
             }
             Self::Buffer { .. } => return Ok(None),
@@ -594,24 +567,17 @@ struct PyMatchIterator {
     ac_impl: AhoCorasick,
     haystack: Option<MatchHaystack>,
     cursor: MatchCursor,
-    iter_batch_size: NonZeroUsize,
     buffered: std::vec::IntoIter<(usize, u64)>,
     scanned_to_end: bool,
 }
 
 impl PyMatchIterator {
-    fn new(
-        ac_impl: AhoCorasick,
-        haystack: MatchHaystack,
-        overlapping: bool,
-        iter_batch_size: NonZeroUsize,
-    ) -> PyResult<Self> {
+    fn new(ac_impl: AhoCorasick, haystack: MatchHaystack, overlapping: bool) -> PyResult<Self> {
         let cursor = MatchCursor::new(&ac_impl, overlapping).map_err(match_error_to_pyerror)?;
         Ok(Self {
             ac_impl,
             haystack: Some(haystack),
             cursor,
-            iter_batch_size,
             buffered: Vec::new().into_iter(),
             scanned_to_end: false,
         })
@@ -639,14 +605,12 @@ impl PyMatchIterator {
 
         // The constructors reject empty patterns, so a positive end offset
         // means the first match has already been returned to Python.
-        let batch_size = self.iter_batch_size.get();
-        if batch_size > 1
-            && self.cursor.end_byte > 0
+        if self.cursor.end_byte > 0
             && let Some(batch) = haystack
-                .refill(py, &self.ac_impl, &mut self.cursor, batch_size)
+                .refill(py, &self.ac_impl, &mut self.cursor)
                 .map_err(match_error_to_pyerror)?
         {
-            self.scanned_to_end = batch.len() < batch_size;
+            self.scanned_to_end = batch.len() < ITER_BATCH_SIZE;
             self.buffered = batch.into_iter();
             let pair = self.buffered.next();
             if pair.is_none() {
@@ -731,15 +695,13 @@ impl PyMatchIterator {
 impl PyBytesAhoCorasick {
     /// __new__() implementation.
     #[new]
-    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, implementation = None, *, iter_batch_size = 128))]
+    #[pyo3(signature = (patterns, matchkind = PyMatchKind::Standard, implementation = None))]
     fn new(
         _py: Python,
         patterns: Bound<'_, PyAny>,
         matchkind: PyMatchKind,
         implementation: Option<Implementation>,
-        iter_batch_size: usize,
     ) -> PyResult<Self> {
-        let iter_batch_size = validate_iter_batch_size(iter_batch_size)?;
         // If set, this means we had an error while parsing byte buffers from `patterns`
         let patterns_error: Cell<Option<PyErr>> = Cell::new(None);
 
@@ -775,10 +737,7 @@ impl PyBytesAhoCorasick {
             return Err(err);
         }
 
-        Ok(Self {
-            ac_impl,
-            iter_batch_size,
-        })
+        Ok(Self { ac_impl })
     }
 
     /// Return matches as tuple of (index_into_patterns,
@@ -807,7 +766,7 @@ impl PyBytesAhoCorasick {
     /// ``find_matches_as_indexes()``.
     ///
     /// For built-in bytes, the iterator may search ahead after the first
-    /// match according to ``iter_batch_size`` on the matcher.
+    /// match and buffer up to 128 matches.
     ///
     /// Do not mutate a mutable buffer while the iterator is in use.
     #[pyo3(signature = (haystack, overlapping = false))]
@@ -829,11 +788,8 @@ impl PyBytesAhoCorasick {
                 }
             }
         };
-        let (ac_impl, iter_batch_size) = {
-            let matcher = self_.bind(py).borrow();
-            (matcher.ac_impl.clone(), matcher.iter_batch_size)
-        };
-        let iterator = PyMatchIterator::new(ac_impl, haystack, overlapping, iter_batch_size)?;
+        let ac_impl = self_.bind(py).borrow().ac_impl.clone();
+        let iterator = PyMatchIterator::new(ac_impl, haystack, overlapping)?;
         Py::new(py, iterator)
     }
 }

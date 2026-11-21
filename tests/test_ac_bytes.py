@@ -128,10 +128,9 @@ def test_find_matches_as_indexes_iter(haystack_type: type[bytes | bytearray]) ->
     assert list(ac.find_matches_as_indexes_iter(haystack)) == non_overlapping
 
 
-@pytest.mark.parametrize("iter_batch_size", [1, 3, 128, sys.maxsize])
-def test_match_iterator_preserves_overlaps_across_refills(iter_batch_size: int) -> None:
+def test_match_iterator_preserves_overlaps_across_refills() -> None:
     haystack = b"\xff" + b"ab" * 136
-    ac = BytesAhoCorasick([b"ab", b"b"], iter_batch_size=iter_batch_size)
+    ac = BytesAhoCorasick([b"ab", b"b"])
     matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
     expected = [
         (end, index) for end in range(3, len(haystack) + 1, 2) for index in (0, 1)

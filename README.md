@@ -74,22 +74,8 @@ defaults to `False` and has the same behavior as on the list API:
 ```
 
 The first call searches for one match. For strings and built-in `bytes`, later
-calls may search ahead and buffer up to `iter_batch_size` matches. A refill can
-scan to the end of the haystack if fewer matches remain.
-
-Both matchers accept the keyword-only constructor argument `iter_batch_size`.
-The value must be positive. The default is 128.
-
-With strings and built-in `bytes`, smaller batches reduce unused work if you
-stop early. They also make the iterator release and reacquire the GIL more
-often. This can reduce throughput when you consume many matches, especially
-when matches are dense. A batch size of 1 disables read-ahead.
-
-```python
->>> ac = ahocorasick_rs.AhoCorasick(patterns, iter_batch_size=1)
->>> next(ac.find_matches_as_indexes_iter(haystack))
-(22, 0)
-```
+calls may search ahead and buffer up to 128 matches. A refill can scan to the
+end of the haystack if fewer matches remain.
 
 The iterator retains the haystack until it reports exhaustion or is dropped.
 Other buffer inputs always search one match at a time. When searching mutable

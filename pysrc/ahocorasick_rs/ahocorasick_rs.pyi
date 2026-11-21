@@ -25,8 +25,6 @@ class AhoCorasick:
         matchkind: MatchKind = MatchKind.Standard,
         store_patterns: Optional[bool] = None,
         implementation: Optional[Implementation] = None,
-        *,
-        iter_batch_size: int = 128,
     ) -> None: ...
     def find_matches_as_indexes(
         self, haystack: str, overlapping: bool = False
@@ -44,8 +42,6 @@ class BytesAhoCorasick:
         patterns: Iterable[Buffer],
         matchkind: MatchKind = MatchKind.Standard,
         implementation: Optional[Implementation] = None,
-        *,
-        iter_batch_size: int = 128,
     ) -> None: ...
     def find_matches_as_indexes(
         self, haystack: Buffer, overlapping: bool = False

@@ -424,16 +424,16 @@ def test_find_matches_as_indexes_iter_dense_unicode_overlaps() -> None:
 
 
 def test_match_iterators_keep_independent_unicode_refills() -> None:
-    ac = AhoCorasick(["🙂é", "é"], iter_batch_size=2)
-    left = ac.find_matches_as_indexes_iter("🙂é🙂é🙂é", overlapping=True)
-    right = ac.find_matches_as_indexes_iter("x🙂éx🙂é", overlapping=True)
+    ac = AhoCorasick(["🙂é", "é"])
+    left = ac.find_matches_as_indexes_iter("🙂é" * 70, overlapping=True)
+    right = ac.find_matches_as_indexes_iter("x🙂é" * 70, overlapping=True)
 
-    assert next(left) == (2, 0)
-    assert next(right) == (3, 0)
-    assert next(left) == (2, 1)
-    assert next(right) == (3, 1)
-    assert list(left) == [(4, 0), (4, 1), (6, 0), (6, 1)]
-    assert list(right) == [(6, 0), (6, 1)]
+    for occurrence in range(1, 71):
+        for pattern in (0, 1):
+            assert next(left) == (2 * occurrence, pattern)
+            assert next(right) == (3 * occurrence, pattern)
+    assert next(left, None) is None
+    assert next(right, None) is None
 
 
 @pytest.mark.parametrize(
@@ -441,14 +441,11 @@ def test_match_iterators_keep_independent_unicode_refills() -> None:
     [partial(AhoCorasick, ["a"]), partial(BytesAhoCorasick, [b"a"])],
     ids=["str", "bytes"],
 )
-def test_iter_batch_size_validation(make_matcher: Callable[..., object]) -> None:
-    with pytest.raises(ValueError, match="iter_batch_size must be positive"):
-        make_matcher(iter_batch_size=0)
-    for size in (-1, 1 << 128):
-        with pytest.raises(OverflowError):
-            make_matcher(iter_batch_size=size)
-    with pytest.raises(TypeError):
-        make_matcher(iter_batch_size=1.5)
+def test_batch_size_is_not_a_constructor_option(
+    make_matcher: Callable[..., object],
+) -> None:
+    with pytest.raises(TypeError, match="iter_batch_size"):
+        make_matcher(iter_batch_size=1)
 
 
 def test_find_matches_as_indexes_iter_participates_in_garbage_collection() -> None:
@@ -489,28 +486,24 @@ def test_match_iterator_holds_haystack_until_it_reports_exhaustion() -> None:
 )
 @pytest.mark.parametrize("as_bytes", [False, True], ids=["str", "bytes"])
 @pytest.mark.parametrize(
-    "after_first, iter_batch_size",
-    [
-        pytest.param(False, 128, id="first_scan"),
-        pytest.param(True, 128, id="refill"),
-        pytest.param(True, 1, id="scalar"),
-    ],
+    "after_first",
+    [pytest.param(False, id="first_scan"), pytest.param(True, id="refill")],
 )
 def test_find_matches_as_indexes_iter_releases_gil(
-    as_bytes: bool, after_first: bool, iter_batch_size: int
+    as_bytes: bool, after_first: bool
 ) -> None:
     # The overlapping search visits repeated partial matches through the
     # automaton. Allow several searches for the OS to schedule the worker.
     haystack = ("ab" if after_first else "") + "a" * 8_000_000
     if as_bytes:
-        ac_bytes = BytesAhoCorasick([b"ab", b"b"], iter_batch_size=iter_batch_size)
+        ac_bytes = BytesAhoCorasick([b"ab", b"b"])
         haystack_bytes = haystack.encode()
         searches = [
             ac_bytes.find_matches_as_indexes_iter(haystack_bytes, overlapping=True)
             for _ in range(4)
         ]
     else:
-        ac = AhoCorasick(["ab", "b"], iter_batch_size=iter_batch_size)
+        ac = AhoCorasick(["ab", "b"])
         searches = [
             ac.find_matches_as_indexes_iter(haystack, overlapping=True)
             for _ in range(4)
@@ -519,7 +512,7 @@ def test_find_matches_as_indexes_iter_releases_gil(
     if after_first:
         for matches in searches:
             assert next(matches) == (2, 0)
-    expected = (2, 1) if after_first and iter_batch_size > 1 else None
+    expected = (2, 1) if after_first else None
 
     ready = threading.Event()
     searching = threading.Event()
@@ -539,11 +532,6 @@ def test_find_matches_as_indexes_iter_releases_gil(
         assert ready.wait(timeout=5)
         searching.set()
         assert not progressed.is_set()
-        if iter_batch_size == 1:
-            # The pending match is yielded before any further scan.
-            for matches in searches:
-                assert next(matches) == (2, 1)
-            assert not progressed.is_set()
         for matches in searches:
             assert next(matches, None) == expected
             if progressed.is_set():
