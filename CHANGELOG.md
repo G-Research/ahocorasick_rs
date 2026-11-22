@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4
+
+* Added support for Python 3.15.
+* Dropped support for Python 3.10.
+
 ## 1.0
 
 * Added support for Python 3.14 and free-threaded Python.
