@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Iterator
 import sys
 
 if sys.version_info >= (3, 12):
@@ -29,6 +29,9 @@ class AhoCorasick:
     def find_matches_as_indexes(
         self, haystack: str, overlapping: bool = False
     ) -> list[tuple[int, int, int]]: ...
+    def find_matches_as_indexes_iter(
+        self, haystack: str, overlapping: bool = False
+    ) -> Iterator[tuple[int, int]]: ...
     def find_matches_as_strings(
         self, haystack: str, overlapping: bool = False
     ) -> list[str]: ...
@@ -43,3 +46,6 @@ class BytesAhoCorasick:
     def find_matches_as_indexes(
         self, haystack: Buffer, overlapping: bool = False
     ) -> list[tuple[int, int, int]]: ...
+    def find_matches_as_indexes_iter(
+        self, haystack: Buffer, overlapping: bool = False
+    ) -> Iterator[tuple[int, int]]: ...

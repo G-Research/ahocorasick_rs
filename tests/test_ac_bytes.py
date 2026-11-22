@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import gc
+import sys
+import weakref
 from typing import Optional
 
 import pytest
@@ -16,6 +19,10 @@ from ahocorasick_rs import (
     MATCHKIND_LEFTMOST_LONGEST,
     MatchKind,
     Implementation,
+)
+
+requires_python_buffer = pytest.mark.skipif(
+    sys.version_info < (3, 12), reason="requires the Python-level buffer protocol"
 )
 
 
@@ -98,6 +105,122 @@ def test_different_byte_haystacks_matching(
     index_matches = ac.find_matches_as_indexes(haystack)
     assert [patterns[i] for (i, _, _) in index_matches] == expected
     assert [haystack[s:e] for (_, s, e) in index_matches] == expected
+
+
+@pytest.mark.parametrize("haystack_type", [bytes, bytearray])
+def test_find_matches_as_indexes_iter(haystack_type: type[bytes | bytearray]) -> None:
+    haystack = haystack_type(b"xabc!abc")
+    ac = BytesAhoCorasick([b"ab", b"abc", b"bc", b"!"])
+
+    expected = [(3, 0), (4, 1), (4, 2), (5, 3), (7, 0), (8, 1), (8, 2)]
+    assert expected == [
+        (end, idx)
+        for idx, _start, end in ac.find_matches_as_indexes(haystack, overlapping=True)
+    ]
+    matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+    assert iter(matches) is matches
+    assert next(matches) == expected[0]
+    assert list(matches) == expected[1:]
+    assert list(matches) == []
+    non_overlapping = [
+        (end, idx) for idx, _start, end in ac.find_matches_as_indexes(haystack)
+    ]
+    assert list(ac.find_matches_as_indexes_iter(haystack)) == non_overlapping
+
+
+def test_match_iterator_preserves_overlaps_across_refills() -> None:
+    haystack = b"\xff" + b"ab" * 136
+    ac = BytesAhoCorasick([b"ab", b"b"])
+    matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+    expected = [
+        (end, index) for end in range(3, len(haystack) + 1, 2) for index in (0, 1)
+    ]
+
+    assert next(matches) == (3, 0)
+    assert list(matches) == expected[1:]
+    assert next(matches, None) is None
+
+
+@pytest.mark.parametrize("overlapping", [False, True])
+def test_find_matches_as_indexes_iter_releases_mutable_buffer(
+    overlapping: bool,
+) -> None:
+    haystack = bytearray(b"xabc!abc" * 3)
+    ac = BytesAhoCorasick([b"ab", b"abc", b"bc", b"!"])
+    expected = [
+        (end, idx)
+        for idx, _start, end in ac.find_matches_as_indexes(
+            haystack, overlapping=overlapping
+        )
+    ]
+    assert len(expected) > 3
+
+    # The buffer stays locked until the iterator is exhausted...
+    matches = ac.find_matches_as_indexes_iter(haystack, overlapping=overlapping)
+    assert next(matches) == expected[0]
+    with pytest.raises(BufferError):
+        haystack.append(0)
+    assert list(matches) == expected[1:]
+
+    # ...and is released then,
+    haystack.append(0)
+
+    # or when the iterator is dropped early.
+    matches = ac.find_matches_as_indexes_iter(haystack, overlapping=overlapping)
+    assert next(matches) == expected[0]
+    del matches
+    haystack.append(0)
+
+
+def test_find_matches_as_indexes_iter_validates_overlapping() -> None:
+    ac = BytesAhoCorasick([b"a"], matchkind=MatchKind.LeftmostFirst)
+    with pytest.raises(ValueError):
+        ac.find_matches_as_indexes_iter(b"", overlapping=True)
+
+
+@requires_python_buffer
+def test_find_matches_as_indexes_iter_keeps_exported_buffer_stable() -> None:
+    class ChangingExporter(bytes):
+        exports = 0
+
+        def __buffer__(self, flags: int) -> memoryview:
+            self.exports += 1
+            if self.exports == 1:
+                return memoryview(b"xxxaaa")
+            return memoryview(b"x")
+
+    ac = BytesAhoCorasick([b"a"])
+    haystack = ChangingExporter(b"x")
+    matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+    assert list(matches) == [(4, 0), (5, 0), (6, 0)]
+
+
+@pytest.mark.parametrize(
+    "custom_exporter",
+    [False, pytest.param(True, marks=requires_python_buffer)],
+    ids=["bytearray", "custom-exporter"],
+)
+def test_find_matches_as_indexes_iter_collects_exporter_cycles(
+    custom_exporter: bool,
+) -> None:
+    class BytearrayExporter(bytearray):
+        iterator: object
+
+    class CustomExporter:
+        iterator: object
+
+        def __buffer__(self, flags: int) -> memoryview:
+            return memoryview(b"a")
+
+    ac = BytesAhoCorasick([b"a"])
+    haystack = CustomExporter() if custom_exporter else BytearrayExporter(b"a")
+    haystack_ref = weakref.ref(haystack)
+    matches = ac.find_matches_as_indexes_iter(haystack)
+    haystack.iterator = matches
+    del haystack, matches
+
+    gc.collect()
+    assert haystack_ref() is None
 
 
 def test_iterator_of_patterns() -> None:

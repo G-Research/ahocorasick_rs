@@ -4,9 +4,8 @@ version = 4
 
 [[package]]
 name = "aho-corasick"
-version = "1.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddd31a130427c27518df266943a5308ed92d4b226cc639f5a8f1002816174301"
+version = "1.1.5"
+source = "git+https://github.com/PLPeeters/aho-corasick.git?rev=33ddf1fff5d741727237f530edeb4066d0fef1dd#33ddf1fff5d741727237f530edeb4066d0fef1dd"
 dependencies = [
  "memchr",
 ]

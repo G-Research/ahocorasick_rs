@@ -60,6 +60,32 @@ You can construct a `AhoCorasick` object from any iterable (including generators
 ['hello', 'world', 'hello']
 ```
 
+For large result sets, `find_matches_as_indexes_iter()` yields matches one at
+a time, so you can stop early without building a list of all matches. Unlike
+`find_matches_as_indexes()`, it yields `(end_index_in_haystack,
+index_into_patterns)` pairs, without the start index. End offsets and ordering
+are the same as in `find_matches_as_indexes()`. The `overlapping` option
+defaults to `False` and has the same behavior as on the list API:
+
+```python
+>>> matches = ac.find_matches_as_indexes_iter(haystack, overlapping=True)
+>>> next(matches)
+(22, 0)
+```
+
+For Standard matching on strings and built-in `bytes`, the iterator can batch
+from the first call. Each refill first searches for the requested match. It can
+then look ahead up to 4 KiB of haystack bytes and buffer up to 128 matches,
+including the requested match. String lookahead uses UTF-8 bytes, while the
+returned offsets still count Unicode code points.
+
+For leftmost matching, the first call searches for one match. Later refills
+can buffer up to 128 matches and may scan to the end of the haystack.
+
+The iterator retains the haystack until it reports exhaustion or is dropped.
+Other buffer inputs always search one match at a time. When searching mutable
+buffers, do not mutate the buffer while the iterator is in use.
+
 ### Searching `bytes` and other similar objects
 
 You can also search `bytes`, `bytearray`, `memoryview`, and other objects supporting the Python buffer API.
@@ -195,8 +221,8 @@ You can control the behavior by using the `store_patterns` keyword argument to `
 
 ## Implementation details <a name="implementation"></a>
 
-* Matching on strings releases the GIL, to enable concurrency.
-  Matching on bytes does not currently release the GIL for memory-safety reasons, unless the haystack type is `bytes`.
+* Matching on strings and list-returning searches on bytes release the GIL.
+  The bytes iterator releases the GIL for built-in `bytes` haystacks.
 * Not all features from the underlying library are exposed; if you would like additional features, please [file an issue](https://github.com/g-research/ahocorasick_rs/issues/new) or submit a PR.
 
 ## Benchmarks <a name="benchmarks"></a>
