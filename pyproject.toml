@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "ahocorasick_rs"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 description = "Search for multiple substrings at the same time, and quickly too"
 dependencies = [
     # Technically not necessary to run, only needed for type checking...
