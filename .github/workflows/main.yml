@@ -44,7 +44,7 @@ jobs:
       # aarch64 runner.
       - uses: "dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88"  # master
         with:
-          toolchain: "1.93.0"
+          toolchain: "1.100.0"
           components: "clippy, rustfmt"
 
       - name: "Compile"
