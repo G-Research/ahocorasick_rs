@@ -273,12 +273,11 @@ impl PyAhoCorasick {
 }
 
 /// A wrapper around PyBuffer that can be passed directly to AhoCorasickBuilder.
-struct PyBufferBytes<'py> {
-    py: Python<'py>,
+struct PyBufferBytes {
     buffer: PyBuffer<u8>,
 }
 
-impl<'py> TryFrom<Bound<'py, PyAny>> for PyBufferBytes<'py> {
+impl<'py> TryFrom<Bound<'py, PyAny>> for PyBufferBytes {
     type Error = PyErr;
 
     // Get a PyBufferBytes from a Python object
@@ -292,21 +291,20 @@ impl<'py> TryFrom<Bound<'py, PyAny>> for PyBufferBytes<'py> {
         }
 
         // Make sure we can get a slice from the buffer
-        let py = obj.py();
         let _ = buffer
-            .as_slice(py)
+            .as_slice_ptr()
             .ok_or_else(|| PyTypeError::new_err("Must be a contiguous sequence of bytes"))?;
 
-        Ok(PyBufferBytes { py, buffer })
+        Ok(PyBufferBytes { buffer })
     }
 }
 
-impl<'a> AsRef<[u8]> for PyBufferBytes<'a> {
+impl AsRef<[u8]> for PyBufferBytes {
     fn as_ref(&self) -> &[u8] {
         // This already succeeded when we created PyBufferBytes, so just expect()
         let slice = self
             .buffer
-            .as_slice(self.py)
+            .as_slice_ptr()
             .expect("Failed to get a slice from a valid buffer?");
 
         const _: () = assert!(
