@@ -73,9 +73,14 @@ defaults to `False` and has the same behavior as on the list API:
 (22, 0)
 ```
 
-The first call searches for one match. For strings and built-in `bytes`, later
-calls may search ahead and buffer up to 128 matches. A refill can scan to the
-end of the haystack if fewer matches remain.
+For Standard matching on strings and built-in `bytes`, the iterator can batch
+from the first call. Each refill first searches for the requested match. It can
+then look ahead up to 4 KiB of haystack bytes and buffer up to 128 matches,
+including the requested match. String lookahead uses UTF-8 bytes, while the
+returned offsets still count Unicode code points.
+
+For leftmost matching, the first call searches for one match. Later refills
+can buffer up to 128 matches and may scan to the end of the haystack.
 
 The iterator retains the haystack until it reports exhaustion or is dropped.
 Other buffer inputs always search one match at a time. When searching mutable

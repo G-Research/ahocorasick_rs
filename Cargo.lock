@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "aho-corasick"
 version = "1.1.5"
-source = "git+https://github.com/PLPeeters/aho-corasick.git?rev=e839485e4735770de34b89caf6e19a0a1ae92b98#e839485e4735770de34b89caf6e19a0a1ae92b98"
+source = "git+https://github.com/PLPeeters/aho-corasick.git?rev=33ddf1fff5d741727237f530edeb4066d0fef1dd#33ddf1fff5d741727237f530edeb4066d0fef1dd"
 dependencies = [
  "memchr",
 ]

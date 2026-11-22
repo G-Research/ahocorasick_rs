@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use aho_corasick::{
     AhoCorasick, AhoCorasickBuilder, AhoCorasickKind, Input, Match, MatchError, MatchKind,
-    automaton::OverlappingState,
+    automaton::{OverlappingSearch, OverlappingState},
 };
 use itertools::Itertools;
 use pyo3::{
@@ -53,9 +53,18 @@ fn is_ascii(haystack: &Bound<'_, PyString>, utf8_len: usize) -> PyResult<bool> {
 
 const ITER_BATCH_SIZE: usize = 128;
 
+// Standard matching limits extra search work in each refill.
+const LOOKAHEAD_BYTES: usize = 4 * 1024;
+
+struct MatchBatch {
+    pairs: Vec<(usize, u64)>,
+    exhausted: bool,
+}
+
 /// Resumable match traversal. The caller supplies the same haystack for every scan.
 struct MatchCursor {
     overlapping: Option<OverlappingState>,
+    paused_non_overlapping: Option<OverlappingState>,
     end_byte: usize,
 }
 
@@ -69,6 +78,7 @@ impl MatchCursor {
         }
         Ok(Self {
             overlapping: overlapping.then(OverlappingState::start),
+            paused_non_overlapping: None,
             end_byte: 0,
         })
     }
@@ -90,7 +100,13 @@ impl MatchCursor {
             state.get_match()
         } else {
             // The Python constructors reject empty patterns, so each match advances.
-            ac_impl.try_find(Input::new(haystack).span(self.end_byte..haystack.len()))?
+            let input = Input::new(haystack).span(self.end_byte..haystack.len());
+            if let Some(mut state) = self.paused_non_overlapping.take() {
+                ac_impl.try_find_overlapping(input, &mut state)?;
+                state.get_match()
+            } else {
+                ac_impl.try_find(input)?
+            }
         };
         if let Some(mat) = found {
             self.end_byte = mat.end();
@@ -111,21 +127,81 @@ impl MatchCursor {
     }
 
     #[inline]
+    fn scan_bounded(
+        &mut self,
+        ac_impl: &AhoCorasick,
+        haystack: &[u8],
+        end: usize,
+    ) -> Result<OverlappingSearch, MatchError> {
+        let outcome = if let Some(state) = &mut self.overlapping {
+            if let Some(mat) = ac_impl.next_pending_overlapping_match(state) {
+                return Ok(OverlappingSearch::Match(mat));
+            }
+            ac_impl.try_find_overlapping_until(haystack, state, end)?
+        } else {
+            // For Standard matching, the first overlapping candidate is the
+            // non-overlapping result. A fresh search starts at its end.
+            let input = Input::new(haystack).span(self.end_byte..haystack.len());
+            let mut state = OverlappingState::start();
+            let outcome = ac_impl.try_find_overlapping_until(input, &mut state, end)?;
+            if outcome == OverlappingSearch::Paused {
+                self.paused_non_overlapping = Some(state);
+            }
+            outcome
+        };
+        if let OverlappingSearch::Match(mat) = outcome {
+            self.end_byte = mat.end();
+        }
+        Ok(outcome)
+    }
+
+    #[inline]
     fn collect_batch(
         &mut self,
         ac_impl: &AhoCorasick,
         haystack: &[u8],
+        bounded: bool,
         mut to_pair: impl FnMut(usize, Match) -> (usize, u64),
-    ) -> Result<Vec<(usize, u64)>, MatchError> {
-        let mut batch = Vec::new();
-        for _ in 0..ITER_BATCH_SIZE {
-            let previous_end_byte = self.end_byte;
-            let Some(mat) = self.next_match(ac_impl, haystack)? else {
-                break;
-            };
-            batch.push(to_pair(previous_end_byte, mat));
+    ) -> Result<MatchBatch, MatchError> {
+        let mut pairs = Vec::new();
+        if !bounded {
+            for _ in 0..ITER_BATCH_SIZE {
+                let previous_end_byte = self.end_byte;
+                let Some(mat) = self.next_match(ac_impl, haystack)? else {
+                    break;
+                };
+                pairs.push(to_pair(previous_end_byte, mat));
+            }
+            let exhausted = pairs.len() < ITER_BATCH_SIZE;
+            return Ok(MatchBatch { pairs, exhausted });
         }
-        Ok(batch)
+
+        let previous_end_byte = self.end_byte;
+        let Some(requested) = self.next_match(ac_impl, haystack)? else {
+            return Ok(MatchBatch {
+                pairs,
+                exhausted: true,
+            });
+        };
+        pairs.push(to_pair(previous_end_byte, requested));
+        let end = requested.end().saturating_add(LOOKAHEAD_BYTES);
+        for _ in 1..ITER_BATCH_SIZE {
+            let previous_end_byte = self.end_byte;
+            match self.scan_bounded(ac_impl, haystack, end)? {
+                OverlappingSearch::Match(mat) => pairs.push(to_pair(previous_end_byte, mat)),
+                OverlappingSearch::Paused => break,
+                OverlappingSearch::Exhausted => {
+                    return Ok(MatchBatch {
+                        pairs,
+                        exhausted: true,
+                    });
+                }
+            }
+        }
+        Ok(MatchBatch {
+            pairs,
+            exhausted: false,
+        })
     }
 }
 
@@ -329,8 +405,9 @@ impl PyAhoCorasick {
     /// index_into_patterns)`` tuples, in the same order as
     /// ``find_matches_as_indexes()``.
     ///
-    /// After the first match, the iterator may search ahead and buffer up
-    /// to 128 matches.
+    /// Standard searches may look ahead by up to 4 KiB of UTF-8 bytes after
+    /// each requested match. Leftmost searches may look ahead after the
+    /// first call. The iterator buffers up to 128 matches per refill.
     #[pyo3(signature = (haystack, overlapping = false))]
     fn find_matches_as_indexes_iter(
         self_: Py<Self>,
@@ -502,7 +579,8 @@ impl MatchHaystack {
         py: Python<'_>,
         ac_impl: &AhoCorasick,
         cursor: &mut MatchCursor,
-    ) -> Result<Option<Vec<(usize, u64)>>, MatchError> {
+        bounded: bool,
+    ) -> Result<Option<MatchBatch>, MatchError> {
         let batch = match self {
             Self::String {
                 haystack,
@@ -511,21 +589,26 @@ impl MatchHaystack {
             } => {
                 let haystack = haystack.as_str();
                 py.detach(|| {
-                    cursor.collect_batch(ac_impl, haystack.as_bytes(), |previous_end_byte, mat| {
-                        code_point_match_pair(
-                            haystack,
-                            *ascii,
-                            previous_end_byte,
-                            end_code_point,
-                            mat,
-                        )
-                    })
+                    cursor.collect_batch(
+                        ac_impl,
+                        haystack.as_bytes(),
+                        bounded,
+                        |previous_end_byte, mat| {
+                            code_point_match_pair(
+                                haystack,
+                                *ascii,
+                                previous_end_byte,
+                                end_code_point,
+                                mat,
+                            )
+                        },
+                    )
                 })?
             }
             Self::Bytes(haystack) => {
                 let haystack = haystack.as_bytes(py);
                 py.detach(|| {
-                    cursor.collect_batch(ac_impl, haystack, |_, mat| byte_match_pair(mat))
+                    cursor.collect_batch(ac_impl, haystack, bounded, |_, mat| byte_match_pair(mat))
                 })?
             }
             Self::Buffer { .. } => return Ok(None),
@@ -603,15 +686,16 @@ impl PyMatchIterator {
             return Ok(None);
         };
 
-        // The constructors reject empty patterns, so a positive end offset
-        // means the first match has already been returned to Python.
-        if self.cursor.end_byte > 0
+        // Leftmost search keeps its original scalar first match and
+        // result-count-only refill.
+        let bounded = matches!(self.ac_impl.match_kind(), MatchKind::Standard);
+        if (bounded || self.cursor.end_byte > 0)
             && let Some(batch) = haystack
-                .refill(py, &self.ac_impl, &mut self.cursor)
+                .refill(py, &self.ac_impl, &mut self.cursor, bounded)
                 .map_err(match_error_to_pyerror)?
         {
-            self.scanned_to_end = batch.len() < ITER_BATCH_SIZE;
-            self.buffered = batch.into_iter();
+            self.scanned_to_end = batch.exhausted;
+            self.buffered = batch.pairs.into_iter();
             let pair = self.buffered.next();
             if pair.is_none() {
                 self.haystack = None;
@@ -765,8 +849,9 @@ impl PyBytesAhoCorasick {
     /// index_into_patterns)`` tuples, in the same order as
     /// ``find_matches_as_indexes()``.
     ///
-    /// For built-in bytes, the iterator may search ahead after the first
-    /// match and buffer up to 128 matches.
+    /// For built-in bytes, Standard searches may look ahead by up to 4 KiB
+    /// after each requested match. Leftmost searches may look ahead after
+    /// the first call. The iterator buffers up to 128 matches per refill.
     ///
     /// Do not mutate a mutable buffer while the iterator is in use.
     #[pyo3(signature = (haystack, overlapping = false))]

@@ -436,6 +436,28 @@ def test_match_iterators_keep_independent_unicode_refills() -> None:
     assert next(right, None) is None
 
 
+@pytest.mark.parametrize("as_bytes", [False, True], ids=["str", "bytes"])
+@pytest.mark.parametrize("overlapping", [False, True])
+def test_match_iterator_resumes_a_match_crossing_the_refill_limit(
+    as_bytes: bool, overlapping: bool
+) -> None:
+    # The first byte of é is inside the refill window and the second is outside.
+    haystack = "Q" + "p" * 4095 + "é🧪"
+    if as_bytes:
+        ac_bytes = BytesAhoCorasick([b"Q", "é🧪".encode(), "🧪".encode()])
+        matches = ac_bytes.find_matches_as_indexes_iter(haystack.encode(), overlapping)
+        end = 4102
+    else:
+        ac = AhoCorasick(["Q", "é🧪", "🧪"])
+        matches = ac.find_matches_as_indexes_iter(haystack, overlapping)
+        end = 4098
+
+    assert next(matches) == (1, 0)
+    expected = [(end, 1), (end, 2)] if overlapping else [(end, 1)]
+    assert list(matches) == expected
+    assert next(matches, None) is None
+
+
 @pytest.mark.parametrize(
     "make_matcher",
     [partial(AhoCorasick, ["a"]), partial(BytesAhoCorasick, [b"a"])],
@@ -512,8 +534,6 @@ def test_find_matches_as_indexes_iter_releases_gil(
     if after_first:
         for matches in searches:
             assert next(matches) == (2, 0)
-    expected = (2, 1) if after_first else None
-
     ready = threading.Event()
     searching = threading.Event()
     progressed = threading.Event()
@@ -532,8 +552,13 @@ def test_find_matches_as_indexes_iter_releases_gil(
         assert ready.wait(timeout=5)
         searching.set()
         assert not progressed.is_set()
+        if after_first:
+            # Yield the buffered or pending match before scanning the long tail.
+            for matches in searches:
+                assert next(matches) == (2, 1)
+            assert not progressed.is_set()
         for matches in searches:
-            assert next(matches, None) == expected
+            assert next(matches, None) is None
             if progressed.is_set():
                 break
         assert progressed.is_set()
